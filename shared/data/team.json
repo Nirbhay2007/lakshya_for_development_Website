@@ -1,0 +1,42 @@
+[
+  {
+    "id": "t1",
+    "name": "Suresh Sharma",
+    "role": "Founder & President",
+    "image": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=400&auto=format&fit=crop",
+    "bio": "Founding member with over two decades of social sector activism.",
+    "linkedin": "https://linkedin.com",
+    "department": "Leadership",
+    "active": true
+  },
+  {
+    "id": "t2",
+    "name": "Dr. Anita Roy",
+    "role": "Director - Environment",
+    "image": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop",
+    "bio": "Ecologist leading clean-air and soil restoration initiatives.",
+    "linkedin": "https://linkedin.com",
+    "department": "Programme",
+    "active": true
+  },
+  {
+    "id": "t3",
+    "name": "Rajesh Verma",
+    "role": "Program Head - Adhaar",
+    "image": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=400&auto=format&fit=crop",
+    "bio": "Coordinates pre-nursery and primary education syllabus.",
+    "linkedin": "https://linkedin.com",
+    "department": "Operations",
+    "active": true
+  },
+  {
+    "id": "t4",
+    "name": "Preeti Sen",
+    "role": "Field Coordinator - Vaidehi",
+    "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=400&auto=format&fit=crop",
+    "bio": "Empowers rural women through tailoring and financial circles.",
+    "linkedin": "https://linkedin.com",
+    "department": "Programme",
+    "active": true
+  }
+]

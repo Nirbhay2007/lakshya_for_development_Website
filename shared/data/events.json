@@ -1,0 +1,47 @@
+{
+  "settings": {
+    "speed": "medium",
+    "bgColor": "#2e7d32",
+    "textColor": "#ffffff"
+  },
+  "items": [
+    {
+      "id": "1",
+      "text": "Health check-up camp & prize distribution for Adhaar class toppers",
+      "date": "2026-06-21",
+      "active": true,
+      "link": ""
+    },
+    {
+      "id": "2",
+      "text": "Pre-nursery class inauguration under the Adhaar programme",
+      "date": "2026-06-15",
+      "active": true,
+      "link": ""
+    },
+    {
+      "id": "3",
+      "text": "International Yoga Day celebration + health camp — June 21",
+      "date": "2026-06-21",
+      "active": true,
+      "link": ""
+    },
+    {
+      "id": "4",
+      "text": "Regular distribution of nutritional food to adolescent girls",
+      "date": "2026-06-10",
+      "active": true,
+      "link": ""
+    },
+    {
+      "id": "5",
+      "text": "World Environment Day 2026 celebrated with Lucknow Airport Authority",
+      "date": "2026-06-05",
+      "active": true,
+      "link": ""
+    }
+  ],
+  "speed": "medium",
+  "bgColor": "#2e7d32",
+  "textColor": "#ffffff"
+}

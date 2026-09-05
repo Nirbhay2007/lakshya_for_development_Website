@@ -1,0 +1,58 @@
+{
+  "hero": {
+    "title": "Your support changes a life today.",
+    "subtitle": "100% of public donations directly fund child education kits, tree planting drives, and women vocational centers.",
+    "bgImage": "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=1400&auto=format&fit=crop"
+  },
+  "whyDonate": [
+    {
+      "iconName": "Leaf",
+      "title": "Environmental Health",
+      "description": "Directly funds tree plantations, local lake restorations, city transit clean-ups, and waste segregation drives to restore ecosystem balance."
+    },
+    {
+      "iconName": "Activity",
+      "title": "Healthcare & Nutrition",
+      "description": "Provides sanitary napkin kits, coordinates health advisory camps, and supplies nutrient-rich food packs to rural adolescent girls."
+    },
+    {
+      "iconName": "BookOpen",
+      "title": "Childhood Education",
+      "description": "Sponsors primary schooling materials, notebooks, stationery kits, uniforms, and non-formal classroom teaching under our Adhaar programme."
+    }
+  ],
+  "presets": [
+    { "id": "p1", "title": "Childhood Education", "label": "Supplies notebooks, stationery and study kits for underprivileged children under Adhaar", "amount": 500, "targetAmount": 50000, "raisedAmount": 32500, "icon": "BookOpen", "highlighted": false },
+    { "id": "p2", "title": "Tree Plantation Drive", "label": "Funds planting and maintaining 10 clean-air saplings in local communities", "amount": 1500, "targetAmount": 100000, "raisedAmount": 64000, "icon": "Leaf", "highlighted": true },
+    { "id": "p3", "title": "Healthcare & Nutrition", "label": "Provides sanitary napkin kits and nutritional support for adolescent girls under Vaidehi", "amount": 3000, "targetAmount": 75000, "raisedAmount": 41200, "icon": "Activity", "highlighted": false },
+    { "id": "p4", "title": "General NGO Support", "label": "Directly supports urgent grassroots community drives and emergency operations", "amount": 0, "targetAmount": 250000, "raisedAmount": 185000, "icon": "Heart", "highlighted": false }
+  ],
+  "upi": {
+    "upiId": "lakshya.society@upi",
+    "qrCodeImage": "",
+    "displayName": "Lakshya A Society for Social and Environmental Development"
+  },
+  "bankTransfer": {
+    "accountName": "Lakshya Society for Social & Environmental Development",
+    "accountNumber": "123456789012",
+    "bankName": "State Bank of India",
+    "ifscCode": "SBIN0001234",
+    "branch": "Vikas Nagar, Lucknow"
+  },
+  "gateways": {
+    "activeGateway": "razorpay",
+    "razorpay": {
+      "enabled": true,
+      "merchantName": "Lakshya A Society for Social and Environmental Development",
+      "keyId": "rzp_test_THg06mDH4BUQ1m",
+      "keySecret": "vaGBCMgkynNkFbOUr5Bh17ZR",
+      "isTestMode": true
+    }
+  },
+  "settings": {
+    "taxNote": "Contributions are eligible for 50% tax deduction under Section 80G of the Income Tax Act, 1961. Receipts will be sent automatically to your email address once payments clear.",
+    "enableForm": true,
+    "thankYouMessage": "Thank you! Your support has been received! Directing to payment gateway...",
+    "redirectUrl": ""
+  }
+}

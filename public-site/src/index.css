@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-cream text-charcoal font-sans antialiased selection:bg-forest-100 selection:text-forest-700 relative overflow-x-hidden transition-colors duration-300;
+  }
+  .dark body {
+    @apply bg-charcoal text-cream selection:bg-forest-700 selection:text-forest-100;
+  }
+}
+
+/* High-Performance sleek plate style (0 scroll lag, compositor-friendly) */
+.glass {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.glass-dark {
+  background: rgba(26, 26, 26, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.glass-green {
+  background: rgba(235, 246, 235, 0.92);
+  border: 1px solid rgba(46, 125, 50, 0.25);
+  box-shadow: 0 8px 32px rgba(46, 125, 50, 0.06);
+}
+
+.bg-clay-gradient {
+  background-color: #f5eedc;
+  background-image: 
+    radial-gradient(circle at 90% 15%, rgba(245, 124, 0, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 10% 45%, rgba(46, 125, 50, 0.04) 0%, transparent 45%),
+    radial-gradient(circle at 85% 75%, rgba(121, 85, 72, 0.03) 0%, transparent 40%);
+}
+
+/* Marquees & Masks */
+.marquee-container {
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  width: 100%;
+}
+
+@keyframes scroll-left {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes scroll-right {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+.animate-scroll-left {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: scroll-left 40s linear infinite;
+  will-change: transform;
+}
+
+.animate-scroll-right {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: scroll-right 40s linear infinite;
+  will-change: transform;
+}
+
+/* Floating labels css helpers */
+.floating-label-input:focus ~ label,
+.floating-label-input:not(:placeholder-shown) ~ label {
+  transform: translateY(-1.25rem) scale(0.85);
+  @apply text-forest-600 font-semibold;
+}
+
+/* Hide scrollbar classes */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

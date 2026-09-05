@@ -1,0 +1,31 @@
+{
+  "hero": {
+    "title": "Join Our Mission",
+    "subtitle": "Work with us to promote social progress and environmental sustainability.",
+    "bgImage": "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200"
+  },
+  "intro": {
+    "title": "Why Build Your Career at Lakshya?",
+    "description": "At Lakshya NGO, we believe in community empowerment and environmental action. We provide an inclusive, passionate, and collaborative work environment where every individual can make a tangible difference in the field."
+  },
+  "jobs": [
+    {
+      "id": "job_1",
+      "title": "Environmental Project Lead",
+      "type": "Full-Time",
+      "location": "Lucknow, Uttar Pradesh",
+      "description": "Coordinate forest restoration, nursery plantation activities, and manage community stakeholder relations.",
+      "requirements": "Masters in Environmental Sciences, Forestry, or equivalent; 2+ years field coordinator experience.",
+      "active": true
+    },
+    {
+      "id": "job_2",
+      "title": "Primary Education Volunteer",
+      "type": "Volunteer",
+      "location": "Lucknow District (Rural)",
+      "description": "Teach primary classes, organize workshops, and coordinate child development curriculum.",
+      "requirements": "Excellent communications, passion for social work and teaching.",
+      "active": true
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "main": {
+    "eyebrow": "Who We Are",
+    "headline": "Two promises made in 2006. Still kept today.",
+    "body": "Lakshya was born from a group of young activists who believed that environmental health and human dignity are inseparable. Since April 12, 2006, we've operated at the intersection of community empowerment and ecological responsibility — not as charity, but as partnership.",
+    "body2": "By enabling villagers, women, and students to become stakeholders in their local environments, we promote systemic change that thrives long after our initial support.",
+    "image": "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=800&auto=format&fit=crop",
+    "primaryBtnLabel": "Our Story →",
+    "primaryBtnLink": "/about",
+    "secondaryBtnLabel": "Connect with Us",
+    "secondaryBtnLink": "/contact",
+    "floatingBadge": "18+ Years of Impact"
+  },
+  "missionVision": {
+    "missionTitle": "Our Mission",
+    "missionBody": "To promote sustainable, community-driven social and environmental health across cities and villages. We seek to protect nature, clean urban centers, and educate underprivileged children while equipping women with livelihood resources to design a dignified, self-reliant future.",
+    "visionTitle": "Our Vision",
+    "visionBody": "A balanced society where human development and nature coexist in harmony. We envision an India where environmental cleanliness is a shared habit, women stand as confident community stakeholders, and quality primary education is accessible to the very last child."
+  },
+  "timeline": [
+    {
+      "year": "2006",
+      "title": "The Spark",
+      "description": "Lakshya was registered on April 12, 2006, by a passionate group of young activists committed to solving grassroots environmental and social challenges."
+    },
+    {
+      "year": "2010",
+      "title": "Adhaar Classes Launch",
+      "description": "Recognizing that long-term social changes start with education, we initiated free pre-nursery and primary classes reaching children in underprivileged rural sectors."
+    },
+    {
+      "year": "2015",
+      "title": "Vaidehi Empowerment Initiative",
+      "description": "Began livelihood training and nutritional support for adolescent girls, helping them gain job skills and develop confidence in designing their own futures."
+    },
+    {
+      "year": "2020",
+      "title": "Litter Free India Campaign",
+      "description": "Organized and expanded environment cleaning activities into the \"Litter Free India\" movement, collaborating with city developers and transit authorities."
+    },
+    {
+      "year": "2026",
+      "title": "Milestone Reached",
+      "description": "Now supporting 6 active programmes, managing 3 regional offices, and having directly impacted over 10,000+ lives across the country."
+    }
+  ],
+  "values": [
+    {
+      "iconName": "ShieldCheck",
+      "title": "Integrity",
+      "description": "We believe in absolute transparency and accountability. Every contribution is directed where it creates the maximum impact."
+    },
+    {
+      "iconName": "Users",
+      "title": "Inclusion",
+      "description": "No voice is too small. We work hand-in-hand with last-mile communities, giving girls, villagers, and children a lead role."
+    },
+    {
+      "iconName": "Recycle",
+      "title": "Sustainability",
+      "description": "Our environmental plans focus on circular local economies and long-term habits, rather than short-term fixes."
+    },
+    {
+      "iconName": "Heart",
+      "title": "Impact",
+      "description": "We measure success not by funds raised, but by lives transformed, trees growing, and communities becoming self-sufficient."
+    }
+  ]
+}

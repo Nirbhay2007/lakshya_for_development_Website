@@ -1,0 +1,102 @@
+{
+  "images": [
+    {
+      "id": "g1",
+      "image": "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=800&auto=format&fit=crop",
+      "alt": "Adhaar Primary Education Camp",
+      "category": "Adhaar",
+      "caption": "Primary education support session in progress",
+      "featured": true,
+      "active": true
+    },
+    {
+      "id": "g2",
+      "image": "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=800&auto=format&fit=crop",
+      "alt": "Yagna Tree Plantation Drive",
+      "category": "Yagna",
+      "caption": "Volunteers planting saplings in local village",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "g3",
+      "image": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop",
+      "alt": "Vaidehi Sewing Training Class",
+      "category": "Vaidehi",
+      "caption": "Tailoring vocational class for adolescent girls",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "g4",
+      "image": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=800&auto=format&fit=crop",
+      "alt": "World Environment Day 2026 Celebration",
+      "category": "Events",
+      "caption": "World Environment Day activities with community developers",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "g5",
+      "image": "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=800&auto=format&fit=crop",
+      "alt": "Nutrition Pack Distribution Day",
+      "category": "Adhaar",
+      "caption": "Healthy meal and supplementary nutrition kits for school kids",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "g6",
+      "image": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop",
+      "alt": "Hills Soil Conservation Volunteers",
+      "category": "Yagna",
+      "caption": "Preventing erosion through local soil conservation",
+      "featured": false,
+      "active": true
+    },
+    {
+      "id": "g7",
+      "image": "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=800&auto=format&fit=crop",
+      "alt": "Vaidehi Confidence Session",
+      "category": "Vaidehi",
+      "caption": "Personality development and leadership workshops",
+      "featured": true,
+      "active": true
+    },
+    {
+      "id": "g8",
+      "image": "https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?q=80&w=800&auto=format&fit=crop",
+      "alt": "Lucknow Airport Litter Awareness Drive",
+      "category": "Events",
+      "caption": "Solid litter collection and public hygiene awareness campaigns",
+      "featured": false,
+      "active": true
+    }
+  ],
+  "videos": [
+    {
+      "id": "v1",
+      "youtubeUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "youtubeId": "dQw4w9WgXcQ",
+      "title": "Adhaar: Bridging Last-Mile Education Gap",
+      "thumbnail": "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=600&auto=format&fit=crop",
+      "active": true
+    },
+    {
+      "id": "v2",
+      "youtubeUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "youtubeId": "dQw4w9WgXcQ",
+      "title": "Vaidehi: Empowering Girls, Building Careers",
+      "thumbnail": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=600&auto=format&fit=crop",
+      "active": true
+    },
+    {
+      "id": "v3",
+      "youtubeUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "youtubeId": "dQw4w9WgXcQ",
+      "title": "Yagna & Litter Free India Community Action",
+      "thumbnail": "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=600&auto=format&fit=crop",
+      "active": true
+    }
+  ]
+}

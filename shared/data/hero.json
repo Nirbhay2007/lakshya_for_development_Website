@@ -1,0 +1,41 @@
+[
+  {
+    "image": "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=1400&auto=format&fit=crop",
+    "eyebrow": "EST. 2006 · INDIA",
+    "title": "Change begins where it's needed most.",
+    "subtext": "Education, environment, and empowerment — driven by community.",
+    "tabName": "01. Community",
+    "cta1Label": "Explore Our Work",
+    "cta1Link": "/programmes",
+    "cta2Label": "Donate Now",
+    "cta2Link": "/donate",
+    "status": "Active",
+    "duration": 6
+  },
+  {
+    "image": "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=1400&auto=format&fit=crop",
+    "eyebrow": "EST. 2006 · INDIA",
+    "title": "A cleaner India starts with one less piece of litter.",
+    "subtext": "Our Litter Free India and Yagna programmes work across cities and villages.",
+    "tabName": "02. Environment",
+    "cta1Label": "Explore Our Work",
+    "cta1Link": "/programmes",
+    "cta2Label": "Donate Now",
+    "cta2Link": "/donate",
+    "status": "Active",
+    "duration": 6
+  },
+  {
+    "image": "https://images.unsplash.com/photo-1489524471354-fc6e92fc6302?q=80&w=1400&auto=format&fit=crop",
+    "eyebrow": "EST. 2006 · INDIA",
+    "title": "Every girl deserves a future she designs.",
+    "subtext": "Vaidehi — our women empowerment programme, building confidence and livelihood.",
+    "tabName": "03. Livelihood",
+    "cta1Label": "Explore Our Work",
+    "cta1Link": "/programmes",
+    "cta2Label": "Donate Now",
+    "cta2Link": "/donate",
+    "status": "Active",
+    "duration": 6
+  }
+]

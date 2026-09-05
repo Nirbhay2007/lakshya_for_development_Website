@@ -1,0 +1,56 @@
+{
+  "headOffice": {
+    "address1": "12, Sector 8",
+    "address2": "Vikas Nagar",
+    "cityStatePin": "Lucknow, Uttar Pradesh - 226022",
+    "phone": "+91 94150 12345",
+    "email": "info@lakshyafordevelopment.org",
+    "whatsapp": "+91 94150 12345",
+    "hours": "Mon - Sat: 9:00 AM - 6:00 PM"
+  },
+  "regionalOffices": [
+    {
+      "id": "ro1",
+      "city": "Lucknow (Head Office)",
+      "address": "12, Sector 8, Vikas Nagar, Lucknow, Uttar Pradesh - 226022",
+      "phone": "+91 94150 12345",
+      "email": "lko@lakshyafordevelopment.org",
+      "active": true
+    },
+    {
+      "id": "ro2",
+      "city": "New Delhi",
+      "address": "B-4, Block C, Vasant Kunj, New Delhi - 110070",
+      "phone": "+91 98110 54321",
+      "email": "delhi@lakshyafordevelopment.org",
+      "active": true
+    },
+    {
+      "id": "ro3",
+      "city": "Mumbai",
+      "address": "402, Sea Breeze, Bandra West, Mumbai, Maharashtra - 400050",
+      "phone": "+91 99200 98765",
+      "email": "mumbai@lakshyafordevelopment.org",
+      "active": true
+    }
+  ],
+  "formSettings": {
+    "destinationEmail": "info@lakshyafordevelopment.org",
+    "successMessage": "Thank you! Your message has been received.",
+    "subjectPrefix": "Lakshya Enquiry: ",
+    "enablePhoneField": true,
+    "requiredFields": ["name", "subject", "message"],
+    "emailService": "demo",
+    "web3formsKey": "",
+    "formspreeFormId": "",
+    "emailjsServiceId": "",
+    "emailjsTemplateId": "",
+    "emailjsPublicKey": "",
+    "webhookUrl": ""
+  },
+  "mapSettings": {
+    "embedUrl": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3558.0772274439055!2d80.95763641504443!3d26.899508583134107!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399bfd79b2eb8331%3A0x673ed146200234e4!2sVikas%20Nagar%2C%20Lucknow%2C%20Uttar%20Pradesh%20226022!5e0!3m2!1sen!2sin!4v1624600000000!5m2!1sen!2sin",
+    "zoom": 15,
+    "markerLabel": "Vikas Nagar Office"
+  }
+}

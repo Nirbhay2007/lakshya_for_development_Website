@@ -1,0 +1,38 @@
+{
+  "name": "lakshya-monorepo",
+  "private": true,
+  "workspaces": [
+    "public-site",
+    "admin"
+  ],
+  "scripts": {
+    "dev:site": "npm run dev --workspace=public-site",
+    "dev:admin": "npm run dev --workspace=admin",
+    "dev:server": "node --watch server/index.js",
+    "dev": "concurrently --kill-others \"npm run dev:server\" \"npm run dev:site\" \"npm run dev:admin\"",
+    "build:site": "npm run build --workspace=public-site",
+    "build:admin": "npm run build --workspace=admin",
+    "build": "npm run build:site && npm run build:admin",
+    "test": "vitest run",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.17",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "dompurify": "^3.4.12",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.3",
+    "razorpay": "^2.9.8",
+    "sanitize-html": "^2.17.6",
+    "sharp": "^0.33.2"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "vitest": "^4.1.10"
+  }
+}

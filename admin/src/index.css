@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --admin-bg:        #0a0f0a;     /* near-black forest */
+  --admin-surface:   #111811;     /* card backgrounds */
+  --admin-surface-2: #161e16;     /* elevated surfaces */
+  --admin-border:    rgba(255,255,255,0.07);
+  --admin-border-hi: rgba(255,255,255,0.14);
+  --admin-accent:    #2e7d32;     /* forest green */
+  --admin-accent-hi: #4caf50;
+  --admin-amber:     #f5a623;
+  --admin-text:      #e8f0e8;
+  --admin-muted:     rgba(232,240,232,0.45);
+  --admin-danger:    #ef4444;
+  --admin-success:   #22c55e;
+}
+
+body {
+  background-color: var(--admin-bg);
+  color: var(--admin-text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--admin-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--admin-surface-2);
+  border-radius: 4px;
+  border: 2px solid var(--admin-bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--admin-accent);
+}
+
+/* Custom UI Helpers */
+@layer components {
+  .glass-panel {
+    background: rgba(17, 24, 17, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--admin-border);
+  }
+  
+  .glass-panel-elevated {
+    background: rgba(22, 30, 22, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--admin-border-hi);
+  }
+
+  .glass-input {
+    background: rgba(22, 30, 22, 0.6);
+    border: 1px solid var(--admin-border);
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .glass-input:focus {
+    outline: none;
+    border-color: var(--admin-accent-hi);
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.15);
+    background: rgba(22, 30, 22, 0.8);
+  }
+
+  .admin-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+  }
+
+  .admin-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    background: var(--admin-accent);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .admin-btn-primary:hover {
+    background: #388e3c;
+    box-shadow: 0 0 12px rgba(46, 125, 50, 0.4);
+  }
+
+  .admin-btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--admin-text);
+    border: 1px solid var(--admin-border);
+  }
+
+  .admin-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--admin-border-hi);
+  }
+
+  .admin-btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .admin-btn-danger:hover {
+    background: var(--admin-danger);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+  }
+}
+
+/* Custom editor tip tap adjustments */
+.ProseMirror {
+  outline: none;
+  min-height: 150px;
+  max-height: 300px;
+  overflow-y: auto;
+  color: var(--admin-text);
+}
+
+.ProseMirror p {
+  margin-bottom: 0.5rem;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem;
+}

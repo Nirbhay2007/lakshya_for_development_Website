@@ -1,0 +1,11 @@
+export const SECTION_HERO = 'hero';
+export const SECTION_EVENTS = 'events';
+export const SECTION_ABOUT = 'about';
+export const SECTION_PROGRAMMES = 'programmes';
+export const SECTION_IMPACT = 'impact';
+export const SECTION_GALLERY = 'gallery';
+export const SECTION_PARTNERS = 'partners';
+export const SECTION_TEAM = 'team';
+export const SECTION_CONTACT = 'contact';
+export const SECTION_DONATE = 'donate';
+export const SECTION_SETTINGS = 'settings';

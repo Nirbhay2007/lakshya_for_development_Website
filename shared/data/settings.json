@@ -1,0 +1,50 @@
+{
+  "general": {
+    "siteName": "Lakshya NGO",
+    "tagline": "Society for Social & Environmental Development",
+    "logoLight": "/lakshya.png",
+    "logoDark": "/lakshya.png",
+    "favicon": "/favicon.png",
+    "footerCopyright": "© 2026 Lakshya NGO. All rights reserved."
+  },
+  "navigation": [
+    { "id": "n1", "name": "Home", "path": "/", "newTab": false, "active": true },
+    { "id": "n2", "name": "About Us", "path": "/about", "newTab": false, "active": true },
+    { "id": "n3", "name": "Programmes", "path": "/programmes", "newTab": false, "active": true },
+    { "id": "n4", "name": "Gallery", "path": "/gallery", "newTab": false, "active": true },
+    { "id": "n5", "name": "Contact Us", "path": "/contact", "newTab": false, "active": true }
+  ],
+  "seo": {
+    "metaTitle": "Lakshya — Society for Social & Environmental Development",
+    "metaDescription": "Dedicated to childhood education, girls' empowerment, and environmental preservation since 2006.",
+    "ogImage": "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=1200&auto=format&fit=crop",
+    "ogTitle": "Lakshya Society India",
+    "ogDescription": "Empowering communities for sustainable environmental growth and social dignity.",
+    "canonicalUrl": "https://lakshyafordevelopment.org",
+    "googleAnalyticsId": "G-XXXXXXXXXX"
+  },
+  "social": {
+    "facebook": "https://facebook.com",
+    "twitter": "https://twitter.com",
+    "instagram": "https://instagram.com",
+    "linkedin": "https://linkedin.com",
+    "youtube": "https://youtube.com",
+    "whatsapp": "+91 94150 12345"
+  },
+  "theme": {
+    "primaryColor": "#2e7d32",
+    "accentColor": "#f5a623",
+    "darkMode": false
+  },
+  "advanced": {
+    "maintenanceMode": false,
+    "maintenanceScope": "all",
+    "maintenancePages": [],
+    "maintenanceMessage": "Site is currently undergoing scheduled maintenance. Please check back shortly.",
+    "customCss": "",
+    "customScriptsHead": "",
+    "customScriptsBody": ""
+  },
+  "categories": ["Adhaar", "Vaidehi", "Yagna", "Events", "General"],
+  "departments": ["Leadership", "Programme", "Operations", "Communications"]
+}

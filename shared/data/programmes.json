@@ -1,0 +1,110 @@
+[
+  {
+    "id": "adhaar",
+    "title": "Adhaar",
+    "eyebrow": "Quality Education",
+    "heading": "Providing a Foundation for Every Child's Future",
+    "accentColor": "#4caf50",
+    "gradientFrom": "#1b5e20",
+    "gradientTo": "#2e7d32",
+    "stat": "1,000+ Kids",
+    "image": "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=1000&auto=format&fit=crop",
+    "description": "Quality education reaching last-mile children in villages and remote communities.",
+    "paragraphs": [
+      "Our flagship educational project, Adhaar, focuses on non-formal pre-nursery and primary classes. We target children living in suburban slums and distant village communities who lack direct access to formal public schools.",
+      "Through Adhaar, children receive primary lessons, nutritional kits, uniforms, and stationary. Our curriculum is tailored to bridge the educational gap, preparing these last-mile children to integrate into formal state schools smoothly.",
+      "By organizing health camps and topper prize distributions, we create a thriving study environment that encourages parents to prioritize their children's education."
+    ],
+    "active": true
+  },
+  {
+    "id": "vaidehi",
+    "title": "Vaidehi",
+    "eyebrow": "Women Empowerment",
+    "heading": "Enabling Self-Reliance and Confidence for Girls",
+    "accentColor": "#e040fb",
+    "gradientFrom": "#4a148c",
+    "gradientTo": "#7b1fa2",
+    "stat": "500+ Women",
+    "image": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1000&auto=format&fit=crop",
+    "description": "Empowering women through livelihood training, confidence building, and rights awareness.",
+    "paragraphs": [
+      "Vaidehi is focused on supporting adolescent girls and young women in rural and semi-urban communities. We address critical gaps in girls' health, safety, and occupational choices.",
+      "The program provides structured livelihood training—including tailoring, handicraft building, and computer literacy. Parallelly, we conduct awareness circles covering gender rights, basic legal knowledge, and menstrual sanitation.",
+      "With regular supplies of nutritional food and health counseling, Vaidehi enables young girls to emerge as confident leaders of their own families and local villages."
+    ],
+    "active": true
+  },
+  {
+    "id": "yagna",
+    "title": "Yagna",
+    "eyebrow": "Environmental Health",
+    "heading": "Restoring Ecological Balance to Our Habitats",
+    "accentColor": "#40c4ff",
+    "gradientFrom": "#01579b",
+    "gradientTo": "#0288d1",
+    "stat": "2,000+ Trees",
+    "image": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=1000&auto=format&fit=crop",
+    "description": "Creating a clean, healthy environment for establishing a sustainable society.",
+    "paragraphs": [
+      "Yagna is our dedicated program for environmental protection. We focus on soil health, local lake revitalization, clean-air trees, and climate adaptions for agriculture.",
+      "We run massive, volunteer-driven tree plantation programs, cleaning waste nodes and transforming them into mini forests. Water protection efforts help villagers harvest rainwater and conserve groundwater tables.",
+      "Our team educates local farm owners on organic manures, ensuring that nature and agriculture coexist to sustain rural economies."
+    ],
+    "active": true
+  },
+  {
+    "id": "vaimalya",
+    "title": "Vaimalya",
+    "eyebrow": "Waste & Sanitation",
+    "heading": "Establishing Waste Segregation and Hygiene Solutions",
+    "accentColor": "#ff7043",
+    "gradientFrom": "#bf360c",
+    "gradientTo": "#e64a19",
+    "stat": "10+ Sites",
+    "image": "https://images.unsplash.com/photo-1530587191325-3db32d826c18?q=80&w=1000&auto=format&fit=crop",
+    "description": "Effective local waste disposal and environment management solutions for communities.",
+    "paragraphs": [
+      "Vaimalya tackles waste disposal and sanitation. We set up color-coded dustbins, carry out street cleanings, and build community sanitation units.",
+      "We partner with local households and waste pickers to establish waste sorting protocols. Households are educated on composting biodegradable kitchen scraps to minimize landfill loads.",
+      "Our sanitation drives focus on making public streets litter-free, promoting community health, and reducing the threat of waterborne diseases."
+    ],
+    "active": true
+  },
+  {
+    "id": "charcha",
+    "title": "Charcha",
+    "eyebrow": "Dialogue & Awareness",
+    "heading": "Spreading Knowledge Through Seminars and Webinars",
+    "accentColor": "#a1887f",
+    "gradientFrom": "#4e342e",
+    "gradientTo": "#6d4c41",
+    "stat": "30+ Sessions",
+    "image": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1000&auto=format&fit=crop",
+    "description": "Knowledge sharing and community mobilization through structured seminars and interactive webinars.",
+    "paragraphs": [
+      "Charcha represents our dialogue and knowledge dissemination pillar. We believe that lasting grassroots action requires informed dialogue, scientific backing, and policy advocacy.",
+      "We host regular community seminars, interactive townhalls, and webinars. Experts in climate science, child rights, and public health share research, breaking it down into simple community action guidelines.",
+      "By facilitating conversations between local developers, citizens, and policymakers, Charcha builds collaborative pathways for local environmental and social progress."
+    ],
+    "active": true
+  },
+  {
+    "id": "litter-free-india",
+    "title": "Litter Free India",
+    "eyebrow": "Clean Transit Spaces",
+    "heading": "Making Garbage Disposal a National Citizen Habit",
+    "accentColor": "#ffd740",
+    "gradientFrom": "#f57f17",
+    "gradientTo": "#f9a825",
+    "stat": "50+ Drives",
+    "image": "https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?q=80&w=1000&auto=format&fit=crop",
+    "description": "Community-led waste collection and litter consciousness campaigns across major areas.",
+    "paragraphs": [
+      "Litter Free India is a citizens' movement. We focus on public transit hubs, community parks, and busy markets where solid litter is highest.",
+      "Through collaborative clean-ups, street plays, and partnerships (such as our drives with the Lucknow Airport Authority), we educate travelers on trash disposal habits.",
+      "Our volunteers install aesthetic trash bins, clear transit litter spots, and inspire citizens to pledge clean habits to protect our public spaces."
+    ],
+    "active": true
+  }
+]

@@ -1,0 +1,20 @@
+{
+  "settings": {
+    "speed": "medium",
+    "rowCount": 2
+  },
+  "partners": [
+    { "id": "p1", "name": "Partner One", "logo": "https://placehold.co/160x60/f5f5f0/2e7d32?text=Partner+One", "url": "", "row": 1, "active": true },
+    { "id": "p2", "name": "Partner Two", "logo": "https://placehold.co/160x60/f5f5f0/2e7d32?text=Partner+Two", "url": "", "row": 1, "active": true },
+    { "id": "p3", "name": "Partner Three", "logo": "https://placehold.co/160x60/f5f5f0/2e7d32?text=Partner+Three", "url": "", "row": 1, "active": true },
+    { "id": "p4", "name": "Partner Four", "logo": "https://placehold.co/160x60/f5f5f0/2e7d32?text=Partner+Four", "url": "", "row": 1, "active": true },
+    { "id": "p5", "name": "Partner Five", "logo": "https://placehold.co/160x60/f5f5f0/2e7d32?text=Partner+Five", "url": "", "row": 1, "active": true },
+    { "id": "p6", "name": "Partner Six", "logo": "https://placehold.co/160x60/f5f5f0/2e7d32?text=Partner+Six", "url": "", "row": 1, "active": true },
+    { "id": "p7", "name": "Partner Seven", "logo": "https://placehold.co/160x60/f5f5f0/795548?text=Partner+Seven", "url": "", "row": 2, "active": true },
+    { "id": "p8", "name": "Partner Eight", "logo": "https://placehold.co/160x60/f5f5f0/795548?text=Partner+Eight", "url": "", "row": 2, "active": true },
+    { "id": "p9", "name": "Partner Nine", "logo": "https://placehold.co/160x60/f5f5f0/795548?text=Partner+Nine", "url": "", "row": 2, "active": true },
+    { "id": "p10", "name": "Partner Ten", "logo": "https://placehold.co/160x60/f5f5f0/795548?text=Partner+Ten", "url": "", "row": 2, "active": true },
+    { "id": "p11", "name": "Partner Eleven", "logo": "https://placehold.co/160x60/f5f5f0/795548?text=Partner+Eleven", "url": "", "row": 2, "active": true },
+    { "id": "p12", "name": "Partner Twelve", "logo": "https://placehold.co/160x60/f5f5f0/795548?text=Partner+Twelve", "url": "", "row": 2, "active": true }
+  ]
+}
