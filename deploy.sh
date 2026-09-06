@@ -62,6 +62,9 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new "$VM_USER@$VM_IP" << 'EOF'
 
   cd ~/lakshya
   
+  echo "📁 Ensuring required directories exist..."
+  mkdir -p server/data server/backups shared/data/temp shared/data/media
+  
   echo "📥 Running npm install on server..."
   npm install --omit=dev --no-audit --no-fund
   

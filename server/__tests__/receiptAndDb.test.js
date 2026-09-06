@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs';
 import { describe, test, expect } from 'vitest';
 import receiptGen from '../receiptGenerator.js';
 const { numberToIndianWords, generate80GReceiptPDF } = receiptGen;
@@ -193,5 +195,38 @@ describe('SQLite Embedded Database Store', () => {
     const latest = db.getRevisionById(revId);
     expect(latest).toBeTruthy();
     expect(latest.content.mission).toBe('Empowering children through quality education');
+  });
+
+  test('creates point-in-time SQLite database backup and restores correctly', async () => {
+    const testTempBackup = path.join(__dirname, `test-backup-${Date.now()}.db`);
+    try {
+      await db.backupDatabase(testTempBackup);
+      expect(fs.existsSync(testTempBackup)).toBe(true);
+      expect(fs.statSync(testTempBackup).size).toBeGreaterThan(0);
+
+      // Verify restore from file
+      const restored = db.restoreDatabaseFromFile(testTempBackup);
+      expect(restored).toBe(true);
+
+      // Query database after restore to verify operations continue seamlessly
+      const stats = db.getDonationStats();
+      expect(stats).toBeTruthy();
+    } finally {
+      if (fs.existsSync(testTempBackup)) {
+        fs.unlinkSync(testTempBackup);
+      }
+    }
+  });
+
+  test('subscribers management in SQLite database', () => {
+    const testEmail = `test.sub.${Date.now()}@example.com`;
+    db.addSubscriber(testEmail);
+    
+    let subs = db.getSubscribers();
+    expect(subs.some(s => s.email === testEmail)).toBe(true);
+
+    db.removeSubscriber(testEmail);
+    subs = db.getSubscribers();
+    expect(subs.some(s => s.email === testEmail)).toBe(false);
   });
 });

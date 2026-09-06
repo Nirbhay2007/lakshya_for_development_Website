@@ -140,30 +140,34 @@ export default function Donations() {
       return;
     }
 
+    const safeCell = (str) => `"${String(str ?? '').replace(/"/g, '""')}"`;
+
     const headers = ['Transaction Ref', 'Receipt Number', 'Donor Name', 'Donor PAN (80G)', 'Email Address', 'Mobile Phone', 'Full Postal Address', 'Purpose / Cause', 'Frequency', 'Amount (INR)', 'Date & Time', 'Status'];
     const rows = filtered.map((d) => [
-      d.transactionRef || d.id,
-      d.receiptNumber || 'N/A',
-      d.name,
-      d.panNumber || (d.claim80g ? 'Claimed - No PAN' : 'Non-80G'),
-      d.email || 'N/A',
-      d.phone || 'N/A',
-      d.address ? `"${d.address.replace(/"/g, '""')}"` : 'N/A',
-      d.purpose,
-      d.frequency === 'monthly' ? 'Monthly Sponsorship' : 'One-Time',
-      d.amount,
-      new Date(d.date).toLocaleString('en-IN'),
-      d.status || 'SUCCESS'
+      safeCell(d.transactionRef || d.id),
+      safeCell(d.receiptNumber || 'N/A'),
+      safeCell(d.name),
+      safeCell(d.panNumber || (d.claim80g ? 'Claimed - No PAN' : 'Non-80G')),
+      safeCell(d.email || 'N/A'),
+      safeCell(d.phone || 'N/A'),
+      safeCell(d.address || 'N/A'),
+      safeCell(d.purpose),
+      safeCell(d.frequency === 'monthly' ? 'Monthly Sponsorship' : 'One-Time'),
+      Number(d.amount) || 0,
+      safeCell(new Date(d.date).toLocaleString('en-IN')),
+      safeCell(d.status || 'SUCCESS')
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = [headers.map(safeCell).join(','), ...rows.map((e) => e.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Lakshya_Donations_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Lakshya_Form10BD_Donations_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
   };
 
   const uniquePurposes = Array.from(new Set(donations.map((d) => d.purpose).filter(Boolean)));

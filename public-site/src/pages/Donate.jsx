@@ -41,6 +41,7 @@ const Donate = () => {
 
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failureReason, setFailureReason] = useState('');
+  const [formError, setFormError] = useState('');
   const shouldReduceMotion = useReducedMotion();
 
   React.useEffect(() => {
@@ -119,6 +120,7 @@ const Donate = () => {
   const isFixedAmount = Boolean(selectedPresetObj && selectedPresetObj.amount && Number(selectedPresetObj.amount) > 0);
 
   const handleSelectPreset = (preset) => {
+    if (formError) setFormError('');
     const title = preset.title || preset.name || 'General Support';
     if (selectedPurpose === title) {
       // Deselect cause
@@ -136,6 +138,7 @@ const Donate = () => {
   };
 
   const handleAmountChange = (e) => {
+    if (formError) setFormError('');
     const val = e.target.value;
     if (val === '' || /^[0-9\b]+$/.test(val)) {
       setAmount(val);
@@ -143,6 +146,7 @@ const Donate = () => {
   };
 
   const handleInputChange = (e) => {
+    if (formError) setFormError('');
     const { name, value } = e.target;
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
@@ -165,42 +169,43 @@ const Donate = () => {
 
   const handleDonateSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
     const numAmount = Number(amount);
     if (!amount || isNaN(numAmount) || numAmount <= 0) {
-      alert('Please enter a valid donation amount.');
+      setFormError('Please enter a valid donation amount.');
       return;
     }
     if (numAmount > 500000) {
-      alert('Maximum online donation per transaction is ₹5,00,000 (5 Lakhs). For larger contributions, please contact our team directly.');
+      setFormError('Maximum online donation per transaction is ₹5,00,000 (5 Lakhs). For larger contributions, please contact our team directly.');
       return;
     }
 
     if (!formState.name || !formState.name.trim()) {
-      alert('Please enter your full name.');
+      setFormError('Please enter your full name.');
       return;
     }
     if (!formState.phone || !formState.phone.trim()) {
-      alert('Please enter your mobile phone number.');
+      setFormError('Please enter your mobile phone number.');
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (formState.email && formState.email.trim() && !emailRegex.test(formState.email.trim())) {
-      alert('Please enter a valid email address or leave it blank.');
+      setFormError('Please enter a valid email address or leave it blank.');
       return;
     }
 
     if (claim80g) {
       const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
       if (!formState.panNumber || !panRegex.test(formState.panNumber.trim().toUpperCase())) {
-        alert('Please enter a valid 10-character Indian PAN Number (e.g. ABCDE1234F) to claim 80G tax deduction.');
+        setFormError('Please enter a valid 10-character Indian PAN Number (e.g. ABCDE1234F) to claim 80G tax deduction.');
         return;
       }
       if (!formState.address || formState.address.trim().length < 5) {
-        alert('Please enter your full postal address as required by the Income Tax Department for 80G Form 10BD.');
+        setFormError('Please enter your full postal address as required by the Income Tax Department for 80G Form 10BD.');
         return;
       }
       if (!formState.email || !formState.email.trim()) {
-        alert('Please provide an email address so we can dispatch your 80G certificate.');
+        setFormError('Please provide an email address so we can dispatch your 80G certificate.');
         return;
       }
     }
@@ -210,7 +215,7 @@ const Donate = () => {
     // Razorpay Payment Flow
     const razorKey = (razorpayConfig.keyId ? razorpayConfig.keyId.trim() : '') || (import.meta.env.VITE_RAZORPAY_KEY_ID ? import.meta.env.VITE_RAZORPAY_KEY_ID.trim() : '');
     if (!razorKey) {
-      alert('Razorpay Key ID is not configured. Please enter your Razorpay Key ID in Admin CMS ➔ Donate Page ➔ Payment Gateways.');
+      setFormError('Razorpay Key ID is not configured. Please enter your Razorpay Key ID in Admin CMS ➔ Donate Page ➔ Payment Gateways.');
       return;
     }
 
@@ -218,7 +223,7 @@ const Donate = () => {
     try {
       const loaded = await loadRazorpayScript();
       if (!loaded) {
-        alert('Failed to load Razorpay Checkout SDK. Please check your network connection.');
+        setFormError('Failed to load Razorpay Checkout SDK. Please check your network connection.');
         setIsProcessingPayment(false);
         return;
       }
@@ -236,7 +241,7 @@ const Donate = () => {
         });
         const orderData = await res.json();
         if (!res.ok || !orderData.success) {
-          alert(orderData.message || 'Failed to create Razorpay order. Please check gateway credentials in Admin CMS.');
+          setFormError(orderData.message || 'Failed to create Razorpay order. Please check gateway credentials in Admin CMS.');
           setIsProcessingPayment(false);
           return;
         }
@@ -244,7 +249,7 @@ const Donate = () => {
           orderId = orderData.orderId;
         }
       } catch (e) {
-        alert('Failed to connect to payment server. Please try again.');
+        setFormError('Failed to connect to payment server. Please try again.');
         setIsProcessingPayment(false);
         return;
       }
@@ -361,7 +366,7 @@ const Donate = () => {
       rzp.open();
     } catch (err) {
       console.error('Razorpay Error:', err);
-      alert('An error occurred while launching Razorpay. Please check your Razorpay Key ID.');
+      setFormError('An error occurred while launching payment. Please check your connection.');
       setIsProcessingPayment(false);
     }
   };
@@ -457,6 +462,26 @@ const Donate = () => {
 
               {settings.enableForm !== false ? (
                 <form onSubmit={handleDonateSubmit} className="space-y-6">
+
+                  {/* Inline Form Error Banner */}
+                  {formError && (
+                    <motion.div
+                      initial={shouldReduceMotion ? {} : { opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/25 text-red-700 dark:text-red-400 rounded-2xl text-xs md:text-sm font-medium select-none"
+                    >
+                      <AlertTriangle className="w-5 h-5 shrink-0 text-red-500 mt-0.5" />
+                      <span className="flex-1 leading-relaxed">{formError}</span>
+                      <button
+                        type="button"
+                        onClick={() => setFormError('')}
+                        className="text-red-400 hover:text-red-600 font-bold ml-1 text-base leading-none cursor-pointer"
+                        aria-label="Dismiss error"
+                      >
+                        &times;
+                      </button>
+                    </motion.div>
+                  )}
 
                   {/* Giving Frequency Selector */}
                   <div className="bg-charcoal/5 p-1.5 rounded-full flex gap-1 border border-charcoal/10">

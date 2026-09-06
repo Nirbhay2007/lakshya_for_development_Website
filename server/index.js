@@ -13,7 +13,9 @@ const { verifyPin, verifySecurityKey, changeSecurityKey, changePin, changeRolePi
 const nodemailer = require('nodemailer');
 const sanitizeHtml = require('sanitize-html');
 const db = require('./db');
-const { generate80GReceiptPDF } = require('./receiptGenerator');
+const { generate80GReceiptPDF, numberToIndianWords } = require('./receiptGenerator');
+
+const escapeHTML = (str) => typeof str === 'string' ? str.replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c] || c)) : '';
 
 // Timing-safe string comparison to prevent timing attacks
 function safeCompare(a, b) {
@@ -194,8 +196,33 @@ function purgeOldBackups() {
   }
 }
 
+// Creates a consolidated backup archive containing both JSON files and the SQLite database
+async function createBackupArchive(destZipPath) {
+  const tempDbSnapshot = path.join(BACKUPS_DIR, `temp-db-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.db`);
+  try {
+    const dbFilePath = path.join(__dirname, 'data', 'lakshya.db');
+    if (fs.existsSync(dbFilePath)) {
+      await db.backupDatabase(tempDbSnapshot);
+    }
+    const zip = new AdmZip();
+    if (fs.existsSync(SHARED_DATA_DIR)) {
+      zip.addLocalFolder(SHARED_DATA_DIR);
+    }
+    if (fs.existsSync(tempDbSnapshot)) {
+      zip.addLocalFile(tempDbSnapshot, '', 'lakshya.db');
+    }
+    zip.writeZip(destZipPath);
+    purgeOldBackups();
+    return true;
+  } finally {
+    if (fs.existsSync(tempDbSnapshot)) {
+      try { fs.unlinkSync(tempDbSnapshot); } catch (e) {}
+    }
+  }
+}
+
 // Automated 3-Day Backup Generator
-function checkAndPerformAutoBackup() {
+async function checkAndPerformAutoBackup() {
   try {
     if (!fs.existsSync(BACKUPS_DIR)) {
       fs.mkdirSync(BACKUPS_DIR, { recursive: true });
@@ -213,14 +240,9 @@ function checkAndPerformAutoBackup() {
 
     if (now - newestTimestamp >= THREE_DAYS_MS) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const zip = new AdmZip();
-      if (fs.existsSync(SHARED_DATA_DIR)) {
-        zip.addLocalFolder(SHARED_DATA_DIR);
-        const backupPath = path.join(BACKUPS_DIR, `auto-snapshot-${timestamp}.zip`);
-        zip.writeZip(backupPath);
-        console.log(`[AUTO-BACKUP] Created automated 3-day backup: auto-snapshot-${timestamp}.zip`);
-        purgeOldBackups();
-      }
+      const backupPath = path.join(BACKUPS_DIR, `auto-snapshot-${timestamp}.zip`);
+      await createBackupArchive(backupPath);
+      console.log(`[AUTO-BACKUP] Created automated 3-day backup: auto-snapshot-${timestamp}.zip`);
     }
   } catch (err) {
     console.error('[AUTO-BACKUP ERROR]:', err.message);
@@ -851,14 +873,11 @@ app.get('/api/backups', requireAuth, requireSecurityAuth, (req, res) => {
 });
 
 // Create a new backup manually
-app.post('/api/backups', requireAuth, requireSecurityAuth, (req, res) => {
+app.post('/api/backups', requireAuth, requireSecurityAuth, async (req, res) => {
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const zip = new AdmZip();
-    zip.addLocalFolder(SHARED_DATA_DIR);
     const backupPath = path.join(BACKUPS_DIR, `snapshot-${timestamp}.zip`);
-    zip.writeZip(backupPath);
-    purgeOldBackups();
+    await createBackupArchive(backupPath);
     res.json({ success: true, message: 'Backup created successfully.' });
   } catch (err) {
     console.error('Error creating backup:', err);
@@ -867,7 +886,7 @@ app.post('/api/backups', requireAuth, requireSecurityAuth, (req, res) => {
 });
 
 // Restore a backup
-app.post('/api/backups/restore/:id', requireAuth, requireSecurityAuth, (req, res) => {
+app.post('/api/backups/restore/:id', requireAuth, requireSecurityAuth, async (req, res) => {
   try {
     const backupId = req.params.id;
     if (backupId.includes('..') || backupId.includes('/') || backupId.includes('\\')) {
@@ -881,13 +900,34 @@ app.post('/api/backups/restore/:id', requireAuth, requireSecurityAuth, (req, res
     
     // Auto-create a backup of the current state before restoring
     const preRestoreTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const safetyZip = new AdmZip();
-    safetyZip.addLocalFolder(SHARED_DATA_DIR);
-    safetyZip.writeZip(path.join(BACKUPS_DIR, `pre-restore-${preRestoreTimestamp}.zip`));
+    await createBackupArchive(path.join(BACKUPS_DIR, `pre-restore-${preRestoreTimestamp}.zip`));
 
     // Restore
     const zip = new AdmZip(backupPath);
-    zip.extractAllTo(SHARED_DATA_DIR, true);
+    const entries = zip.getEntries();
+
+    // Extract JSON data files to SHARED_DATA_DIR (skipping lakshya.db)
+    for (const entry of entries) {
+      if (entry.entryName === 'lakshya.db') continue;
+      if (!entry.isDirectory) {
+        const destPath = path.join(SHARED_DATA_DIR, entry.entryName);
+        fs.writeFileSync(destPath, entry.getData());
+      }
+    }
+
+    // Check if lakshya.db is present in backup
+    const dbEntry = zip.getEntry('lakshya.db');
+    if (dbEntry) {
+      const tempRestoreDb = path.join(BACKUPS_DIR, `temp-restore-${Date.now()}.db`);
+      fs.writeFileSync(tempRestoreDb, dbEntry.getData());
+      try {
+        db.restoreDatabaseFromFile(tempRestoreDb);
+      } finally {
+        if (fs.existsSync(tempRestoreDb)) {
+          try { fs.unlinkSync(tempRestoreDb); } catch (e) {}
+        }
+      }
+    }
     
     // Invalidate in-memory cache on restore
     cmsCache = null;
@@ -1326,7 +1366,7 @@ app.post('/api/newsletter/subscribe', publicFormLimiter, (req, res) => {
 });
 
 // Admin list subscribers endpoint
-app.get('/api/newsletter/subscribers', requireAuth, (req, res) => {
+app.get(['/api/newsletter/subscribers', '/api/subscribers'], requireAuth, (req, res) => {
   try {
     const subscribers = db.getSubscribers();
     return res.json({ success: true, subscribers });
@@ -1744,6 +1784,303 @@ app.get('/api/donations/:id/receipt', async (req, res) => {
   }
 });
 
+// --- Public 80G Donation Receipt Verification Endpoint ---
+// Validates authentic digital certificate links printed on receipts or scanned via QR Code
+app.get(['/api/donations/:id/verify', '/api/donations/verify/:id'], (req, res) => {
+  const { id } = req.params;
+  const donation = db.getDonationById(id) || db.getDonationByTransactionRef(id);
+
+  const acceptsHtml = req.accepts('html') && !req.xhr && !(req.headers.accept || '').includes('application/json');
+
+  if (!donation) {
+    if (!acceptsHtml) {
+      return res.status(404).json({ success: false, verified: false, message: 'Donation record not found in verified registry.' });
+    }
+    return res.status(404).send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Record Not Found - Lakshya Verification Registry</title>
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+          body { font-family: 'Outfit', sans-serif; background: #090d16; color: #f8fafc; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+          .card { background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; max-width: 520px; width: 100%; padding: 40px 32px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+          .badge { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: #ef444422; border: 2px solid #ef4444; color: #ef4444; margin-bottom: 24px; font-size: 28px; }
+          h1 { font-size: 22px; font-weight: 700; margin: 0 0 12px 0; color: #f8fafc; }
+          p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 0 0 28px 0; }
+          .btn { display: inline-block; background: #10b981; color: #064e3b; font-weight: 700; font-size: 14px; text-decoration: none; padding: 12px 28px; border-radius: 9999px; transition: 0.2s; }
+          .btn:hover { background: #059669; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="badge">&#x2715;</div>
+          <h1>Certificate Record Not Found</h1>
+          <p>The donation reference or certificate ID <strong>${escapeHTML(id)}</strong> could not be located in Lakshya's verified database. If you recently made a contribution, please verify your transaction reference with your payment confirmation email.</p>
+          <a href="/" class="btn">Return to Lakshya Society</a>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+
+  // If JSON requested
+  if (!acceptsHtml) {
+    return res.json({
+      success: true,
+      verified: true,
+      donation: {
+        id: donation.id,
+        receiptNumber: donation.receiptNumber || `LAKSHYA-${donation.id.slice(0, 8).toUpperCase()}`,
+        donorName: donation.name,
+        amount: donation.amount,
+        date: donation.date,
+        purpose: donation.purpose,
+        paymentMethod: donation.paymentMethod,
+        transactionRef: donation.transactionRef || donation.id,
+        claim80g: Boolean(donation.claim80g),
+        panNumber: donation.panNumber || null,
+        status: donation.status || 'SUCCESS'
+      }
+    });
+  }
+
+  // If browser HTML requested
+  const safeReceiptNo = escapeHTML(donation.receiptNumber || `LAKSHYA-${donation.id.slice(0, 8).toUpperCase()}`);
+  const safeDonorName = escapeHTML(donation.name || 'Anonymous Donor');
+  const safePan = escapeHTML(donation.panNumber || (donation.claim80g ? 'Recorded' : 'Non-80G Contribution'));
+  const safePurpose = escapeHTML(donation.purpose || 'General NGO Support');
+  const safeDate = new Date(donation.date).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' });
+  const safeRef = escapeHTML(donation.transactionRef || donation.id);
+  const safeAmount = Number(donation.amount).toLocaleString('en-IN');
+  const safeWords = numberToIndianWords(donation.amount);
+  const hash = Buffer.from(`${donation.id}-${donation.amount}`).toString('base64');
+
+  return res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Official 80G Certificate Verification - Lakshya Society</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+      <style>
+        :root {
+          --forest: #14532d;
+          --emerald: #10b981;
+          --slate-900: #090d16;
+          --slate-800: #131d2e;
+          --slate-700: #1e293b;
+          --slate-600: #334155;
+          --slate-400: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+          font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+          background: #090d16;
+          color: #f1f5f9;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px 16px;
+          background-image: radial-gradient(circle at top, rgba(16, 185, 129, 0.08) 0%, transparent 60%);
+        }
+        .cert-card {
+          width: 100%;
+          max-width: 640px;
+          background: #0f172a;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 24px;
+          box-shadow: 0 25px 60px -15px rgba(0,0,0,0.7), 0 0 40px -10px rgba(16, 185, 129, 0.15);
+          overflow: hidden;
+        }
+        .header {
+          padding: 32px 32px 24px;
+          text-align: center;
+          background: linear-gradient(180deg, rgba(16, 185, 129, 0.1) 0%, rgba(15, 23, 42, 0) 100%);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .seal-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 16px;
+          background: rgba(16, 185, 129, 0.15);
+          border: 1px solid rgba(16, 185, 129, 0.4);
+          color: #34d399;
+          border-radius: 9999px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          margin-bottom: 16px;
+        }
+        .seal-badge svg { width: 14px; height: 14px; }
+        h1 {
+          font-size: 20px;
+          font-weight: 800;
+          color: #ffffff;
+          margin-bottom: 6px;
+          letter-spacing: -0.01em;
+        }
+        .ngo-subtitle {
+          font-size: 13px;
+          color: var(--slate-400);
+          margin-bottom: 12px;
+        }
+        .amount-box {
+          margin: 16px 0 8px;
+          padding: 16px 20px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 16px;
+          text-align: center;
+        }
+        .amount-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; font-weight: 600; margin-bottom: 4px; }
+        .amount-val { font-size: 32px; font-weight: 800; color: #34d399; font-family: 'Space Mono', monospace; }
+        .amount-words { font-size: 12px; color: #cbd5e1; font-style: italic; margin-top: 4px; }
+        .body-content { padding: 28px 32px; }
+        .details-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+        @media (max-width: 540px) {
+          .details-grid { grid-template-columns: 1fr; }
+          .body-content, .header { padding: 24px 20px; }
+        }
+        .item-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+        .item-val { font-size: 13.5px; font-weight: 600; color: #e2e8f0; word-break: break-word; }
+        .item-val.highlight { color: #38bdf8; font-family: 'Space Mono', monospace; font-size: 12.5px; }
+        .tax-banner {
+          background: rgba(245, 158, 11, 0.08);
+          border: 1px solid rgba(245, 158, 11, 0.25);
+          border-radius: 14px;
+          padding: 14px 18px;
+          font-size: 12px;
+          color: #fde68a;
+          line-height: 1.5;
+          margin-bottom: 24px;
+        }
+        .tax-banner strong { color: #f59e0b; }
+        .actions {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .btn-primary {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 14px 24px;
+          background: #10b981;
+          color: #064e3b;
+          font-size: 13.5px;
+          font-weight: 700;
+          text-decoration: none;
+          border-radius: 14px;
+          transition: all 0.2s;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        .btn-primary:hover { background: #059669; }
+        .btn-secondary {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 12px 24px;
+          background: rgba(255, 255, 255, 0.05);
+          color: #cbd5e1;
+          font-size: 13px;
+          font-weight: 600;
+          text-decoration: none;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 14px;
+          transition: all 0.2s;
+        }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.09); color: #ffffff; }
+        .footer-note {
+          text-align: center;
+          font-size: 11px;
+          color: #64748b;
+          margin-top: 20px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="cert-card">
+        <div class="header">
+          <div class="seal-badge">
+            <svg fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+            Verified Official Receipt
+          </div>
+          <h1>Lakshya Society for Social &amp; Environmental Development</h1>
+          <div class="ngo-subtitle">Registered Society under Societies Registration Act XXI of 1860</div>
+
+          <div class="amount-box">
+            <div class="amount-label">Verified Contribution Amount</div>
+            <div class="amount-val">&#8377; ${safeAmount}/-</div>
+            <div class="amount-words">${safeWords}</div>
+          </div>
+        </div>
+
+        <div class="body-content">
+          <div class="details-grid">
+            <div>
+              <div class="item-label">Receipt Number</div>
+              <div class="item-val highlight">${safeReceiptNo}</div>
+            </div>
+            <div>
+              <div class="item-label">Donor Name</div>
+              <div class="item-val">${safeDonorName}</div>
+            </div>
+            <div>
+              <div class="item-label">Donor PAN (80G)</div>
+              <div class="item-val highlight">${safePan}</div>
+            </div>
+            <div>
+              <div class="item-label">Settlement Date</div>
+              <div class="item-val">${safeDate}</div>
+            </div>
+            <div>
+              <div class="item-label">Contribution Purpose</div>
+              <div class="item-val">${safePurpose}</div>
+            </div>
+            <div>
+              <div class="item-label">Transaction Reference</div>
+              <div class="item-val highlight">${safeRef}</div>
+            </div>
+          </div>
+
+          <div class="tax-banner">
+            <strong>Statutory 80G Tax Exemption Proof:</strong> This donation is verified as eligible for 50% deduction under Section 80G(5)(vi) of the Income Tax Act, 1961 (Order URN: AABTL0123EF20214). This certificate serves as authentic proof for Form 10BD annual compliance and donor ITR claims.
+          </div>
+
+          <div class="actions">
+            <a href="/api/donations/${donation.id}/receipt" class="btn-primary" target="_blank">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              Download Official Stamped 80G PDF
+            </a>
+            <a href="/" class="btn-secondary">Visit Lakshya NGO Website</a>
+          </div>
+
+          <div class="footer-note">
+            Verification Hash: ${hash} &bull; Verified in Lakshya Central Registry
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
 // --- Razorpay Asynchronous Webhook Endpoint ---
 app.post('/api/donations/razorpay/webhook', async (req, res) => {
   const signature = req.headers['x-razorpay-signature'];
@@ -1820,22 +2157,19 @@ app.get('/api/newsletter/unsubscribe', (req, res) => {
   }
 
   try {
-    let subscribers = [];
+    const normalizedEmail = email.trim().toLowerCase();
+    db.removeSubscriber(normalizedEmail);
     if (fs.existsSync(NEWSLETTER_FILE)) {
       try {
         const raw = fs.readFileSync(NEWSLETTER_FILE, 'utf-8');
-        subscribers = JSON.parse(raw);
-        if (!Array.isArray(subscribers)) subscribers = [];
-      } catch (e) {
-        subscribers = [];
-      }
+        let subscribers = JSON.parse(raw);
+        if (Array.isArray(subscribers)) {
+          subscribers = subscribers.filter(s => s.email !== normalizedEmail);
+          safeWriteFileSync(NEWSLETTER_FILE, subscribers);
+        }
+      } catch (e) {}
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const filtered = subscribers.filter(s => s.email !== normalizedEmail);
-    safeWriteFileSync(NEWSLETTER_FILE, filtered);
-
-    const escapeHTML = (str) => typeof str === 'string' ? str.replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c] || c)) : '';
     const safeEmail = escapeHTML(normalizedEmail);
 
     return res.send(`
@@ -2097,19 +2431,10 @@ app.post('/api/newsletter/broadcast', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Attached PDF file was not found on the server.' });
     }
 
-    // Load subscribers
-    let subscribers = [];
-    if (fs.existsSync(NEWSLETTER_FILE)) {
-      try {
-        const raw = fs.readFileSync(NEWSLETTER_FILE, 'utf-8');
-        subscribers = JSON.parse(raw);
-        if (!Array.isArray(subscribers)) subscribers = [];
-      } catch (e) {
-        subscribers = [];
-      }
-    }
+    // Load subscribers from SQLite database
+    const subscribers = db.getSubscribers();
 
-    if (subscribers.length === 0) {
+    if (!subscribers || subscribers.length === 0) {
       return res.status(400).json({ success: false, message: 'You have zero newsletter subscribers to broadcast to.' });
     }
 

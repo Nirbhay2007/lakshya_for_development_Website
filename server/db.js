@@ -8,7 +8,7 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 const DB_PATH = path.join(DATA_DIR, 'lakshya.db');
-const db = new Database(DB_PATH);
+let db = new Database(DB_PATH);
 
 // Enable WAL mode for high concurrency
 db.pragma('journal_mode = WAL');
@@ -492,8 +492,40 @@ function getRevisionById(id) {
   }
 }
 
+function backupDatabase(targetPath) {
+  return db.backup(targetPath);
+}
+
+function restoreDatabaseFromFile(incomingDbPath) {
+  if (!fs.existsSync(incomingDbPath)) {
+    throw new Error(`Incoming database file does not exist at ${incomingDbPath}`);
+  }
+  try {
+    db.pragma('wal_checkpoint(TRUNCATE)');
+    db.close();
+    fs.copyFileSync(incomingDbPath, DB_PATH);
+    const walFile = DB_PATH + '-wal';
+    const shmFile = DB_PATH + '-shm';
+    if (fs.existsSync(walFile)) {
+      try { fs.unlinkSync(walFile); } catch (e) {}
+    }
+    if (fs.existsSync(shmFile)) {
+      try { fs.unlinkSync(shmFile); } catch (e) {}
+    }
+    db = new Database(DB_PATH);
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL');
+    return true;
+  } catch (err) {
+    console.error('Failed to restore database from snapshot:', err);
+    throw err;
+  }
+}
+
 module.exports = {
-  db,
+  get db() { return db; },
+  backupDatabase,
+  restoreDatabaseFromFile,
   getDonations,
   getDonationById,
   getDonationByTransactionRef,
