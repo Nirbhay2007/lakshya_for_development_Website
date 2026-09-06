@@ -287,11 +287,36 @@ function verifySecurityKey(req, res) {
   }
 }
 
+// Helper to verify a new PIN does not collide with any other role or key
+function checkPinCollision(plainPin, targetKey, auth) {
+  const credentialsToCheck = [
+    { key: 'pinHash', name: 'Super Admin PIN', defaultVal: DEFAULT_PIN },
+    { key: 'editorPinHash', name: 'Content Editor PIN', defaultVal: DEFAULT_EDITOR_PIN },
+    { key: 'financePinHash', name: 'Finance Officer PIN', defaultVal: DEFAULT_FINANCE_PIN },
+    { key: 'securityKeyHash', name: 'Master Security Key', defaultVal: DEFAULT_SECURITY_KEY }
+  ];
+
+  for (const cred of credentialsToCheck) {
+    if (cred.key === targetKey) continue;
+
+    // Check if plainPin matches current stored hash
+    if (auth[cred.key] && verifyCredential(plainPin, auth[cred.key])) {
+      return cred.name;
+    }
+    // Check if plainPin matches default value of that other credential
+    if (plainPin === cred.defaultVal) {
+      return cred.name;
+    }
+  }
+
+  return null;
+}
+
 /** POST /api/auth/change-security-key — body: { newSecurityKey: "987654" } */
 function changeSecurityKey(req, res) {
   const { newSecurityKey } = req.body;
-  if (!newSecurityKey || typeof newSecurityKey !== 'string' || newSecurityKey.length !== 6) {
-    return res.status(400).json({ success: false, message: 'New Security Key must be a 6-digit string.' });
+  if (!newSecurityKey || typeof newSecurityKey !== 'string' || newSecurityKey.length !== 6 || !/^\d{6}$/.test(newSecurityKey)) {
+    return res.status(400).json({ success: false, message: 'New Security Key must be a 6-digit numeric string.' });
   }
 
   const auth = readAuth();
@@ -310,7 +335,15 @@ function changeSecurityKey(req, res) {
   }
 
   if (newSecurityKey === DEFAULT_SECURITY_KEY) {
-    return res.status(400).json({ success: false, message: 'Cannot use the default Security Key.' });
+    return res.status(400).json({ success: false, message: 'Cannot use default Master Key "999999".' });
+  }
+
+  const collision = checkPinCollision(newSecurityKey, 'securityKeyHash', auth);
+  if (collision) {
+    return res.status(400).json({
+      success: false,
+      message: `Cannot use this Master Key: it conflicts with the ${collision}. All system keys must be unique.`
+    });
   }
 
   const newHashed = createSaltedHash(newSecurityKey);
@@ -326,14 +359,22 @@ function changeSecurityKey(req, res) {
 function changePin(req, res) {
   const { newPin } = req.body;
 
-  if (!newPin || typeof newPin !== 'string' || newPin.length !== 6) {
-    return res.status(400).json({ success: false, message: 'New PIN must be a 6-digit string.' });
+  if (!newPin || typeof newPin !== 'string' || newPin.length !== 6 || !/^\d{6}$/.test(newPin)) {
+    return res.status(400).json({ success: false, message: 'New PIN must be a 6-digit numeric string.' });
   }
 
   const auth = readAuth();
 
   if (newPin === DEFAULT_PIN) {
-    return res.status(400).json({ success: false, message: 'Cannot use the default PIN.' });
+    return res.status(400).json({ success: false, message: 'Cannot use the default PIN "123456".' });
+  }
+
+  const collision = checkPinCollision(newPin, 'pinHash', auth);
+  if (collision) {
+    return res.status(400).json({
+      success: false,
+      message: `Cannot use this PIN: it conflicts with the ${collision}. All role passwords must be unique.`
+    });
   }
 
   const newHashed = createSaltedHash(newPin);
@@ -447,6 +488,18 @@ function changeRolePin(req, res) {
   }
 
   const auth = readAuth();
+  const targetKey = role === 'editor' ? 'editorPinHash' : 'financePinHash';
+
+  if (!resetToDefault) {
+    const collision = checkPinCollision(newPin, targetKey, auth);
+    if (collision) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot assign this PIN: it conflicts with the ${collision}. Each portal role must have a distinct, unique PIN.`
+      });
+    }
+  }
+
   const newHashed = createSaltedHash(newPin);
   const isDefault = (newPin === (role === 'editor' ? DEFAULT_EDITOR_PIN : DEFAULT_FINANCE_PIN));
 

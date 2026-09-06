@@ -2,6 +2,7 @@ import React, { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AdminShell from './components/layout/AdminShell';
 import Login from './pages/Login';
+import { useAdminStore } from './store/useAdminStore';
 
 // Lazy wrapper with auto-reload retry on fetch/network chunk failures
 function safeLazy(importFn) {
@@ -12,6 +13,15 @@ function safeLazy(importFn) {
       return new Promise(() => {}); // keeps page in suspense state until reloaded
     })
   );
+}
+
+// RoleGuard to block direct URL access to prohibited routes
+function RoleGuard({ allowedRoles = [], children }) {
+  const role = useAdminStore((state) => state.role || 'superadmin');
+  if (role === 'superadmin' || allowedRoles.includes(role)) {
+    return children;
+  }
+  return <Navigate to="/" replace />;
 }
 
 // Lazy loaded page sections to split admin bundle
@@ -53,83 +63,83 @@ export const router = createBrowserRouter(
         },
         {
           path: 'hero',
-          element: <HeroEditor />
+          element: <RoleGuard allowedRoles={['editor']}><HeroEditor /></RoleGuard>
         },
         {
           path: 'events',
-          element: <EventsEditor />
+          element: <RoleGuard allowedRoles={['editor']}><EventsEditor /></RoleGuard>
         },
         {
           path: 'about',
-          element: <AboutEditor />
+          element: <RoleGuard allowedRoles={['editor']}><AboutEditor /></RoleGuard>
         },
         {
           path: 'programmes',
-          element: <ProgrammesEditor />
+          element: <RoleGuard allowedRoles={['editor']}><ProgrammesEditor /></RoleGuard>
         },
         {
           path: 'impact',
-          element: <ImpactEditor />
+          element: <RoleGuard allowedRoles={['editor']}><ImpactEditor /></RoleGuard>
         },
         {
           path: 'gallery',
-          element: <GalleryEditor />
+          element: <RoleGuard allowedRoles={['editor']}><GalleryEditor /></RoleGuard>
         },
         {
           path: 'partners',
-          element: <PartnersEditor />
+          element: <RoleGuard allowedRoles={['editor']}><PartnersEditor /></RoleGuard>
         },
         {
           path: 'team',
-          element: <TeamEditor />
+          element: <RoleGuard allowedRoles={['editor']}><TeamEditor /></RoleGuard>
         },
         {
           path: 'contact',
-          element: <ContactEditor />
+          element: <RoleGuard allowedRoles={['editor']}><ContactEditor /></RoleGuard>
         },
         {
           path: 'donate',
-          element: <DonateEditor />
+          element: <RoleGuard allowedRoles={[]}><DonateEditor /></RoleGuard>
         },
         {
           path: 'careers',
-          element: <CareersEditor />
+          element: <RoleGuard allowedRoles={['editor']}><CareersEditor /></RoleGuard>
         },
         {
           path: 'legal',
-          element: <LegalEditor />
+          element: <RoleGuard allowedRoles={['editor']}><LegalEditor /></RoleGuard>
         },
         {
           path: 'submissions',
-          element: <Submissions />
+          element: <RoleGuard allowedRoles={['editor', 'finance']}><Submissions /></RoleGuard>
         },
         {
           path: 'donations',
-          element: <Donations />
+          element: <RoleGuard allowedRoles={['finance']}><Donations /></RoleGuard>
         },
         {
           path: 'settings',
-          element: <SiteSettingsEditor />
+          element: <RoleGuard allowedRoles={[]}><SiteSettingsEditor /></RoleGuard>
         },
         {
           path: 'media',
-          element: <MediaLibrary />
+          element: <RoleGuard allowedRoles={['editor']}><MediaLibrary /></RoleGuard>
         },
         {
           path: 'activity',
-          element: <ActivityLog />
+          element: <RoleGuard allowedRoles={[]}><ActivityLog /></RoleGuard>
         },
         {
           path: 'backups',
-          element: <Backups />
+          element: <RoleGuard allowedRoles={[]}><Backups /></RoleGuard>
         },
         {
           path: 'newsletter',
-          element: <Newsletter />
+          element: <RoleGuard allowedRoles={['finance']}><Newsletter /></RoleGuard>
         },
         {
           path: 'security',
-          element: <SecuritySettings />
+          element: <RoleGuard allowedRoles={[]}><SecuritySettings /></RoleGuard>
         },
         {
           path: '*',

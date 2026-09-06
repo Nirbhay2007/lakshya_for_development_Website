@@ -1,5 +1,40 @@
 [
   {
+    "id": "oc8gokn55",
+    "timestamp": 1788671506532,
+    "action": "Security",
+    "section": "Role Access",
+    "description": "FINANCE PIN was modified by Super Admin"
+  },
+  {
+    "id": "3lllzoj4m",
+    "timestamp": 1788671496800,
+    "action": "Security",
+    "section": "Role Access",
+    "description": "EDITOR PIN was modified by Super Admin"
+  },
+  {
+    "id": "tw82wjxw1",
+    "timestamp": 1788671476131,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in with SUPERADMIN role"
+  },
+  {
+    "id": "oeorpx7oi",
+    "timestamp": 1788671431553,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in with FINANCE role"
+  },
+  {
+    "id": "h5yizgou2",
+    "timestamp": 1788671411346,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in with EDITOR role"
+  },
+  {
     "id": "lqdzyeib5",
     "timestamp": 1788670952193,
     "action": "Security",

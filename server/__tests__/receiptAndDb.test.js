@@ -91,6 +91,33 @@ describe('Role-Based Access Control (RBAC) Token Logic', () => {
     expect(changeRes.success).toBe(true);
     expect(changeRes.isDefault).toBe(true);
   });
+
+  test('strictly rejects duplicate or colliding PINs between roles and master key', () => {
+    let changeRes = null;
+    let statusCode = 200;
+    const res = {
+      status: (code) => { statusCode = code; return res; },
+      json: (data) => { changeRes = data; return data; }
+    };
+
+    // Attempt to set Editor PIN to Superadmin PIN (123456)
+    auth.changeRolePin({ body: { role: 'editor', newPin: '123456' } }, res);
+    expect(statusCode).toBe(400);
+    expect(changeRes.success).toBe(false);
+    expect(changeRes.message).toContain('Super Admin PIN');
+
+    // Attempt to set Editor PIN to Finance PIN (345678)
+    auth.changeRolePin({ body: { role: 'editor', newPin: '345678' } }, res);
+    expect(statusCode).toBe(400);
+    expect(changeRes.success).toBe(false);
+    expect(changeRes.message).toContain('Finance Officer PIN');
+
+    // Attempt to set Finance PIN to Editor PIN (234567)
+    auth.changeRolePin({ body: { role: 'finance', newPin: '234567' } }, res);
+    expect(statusCode).toBe(400);
+    expect(changeRes.success).toBe(false);
+    expect(changeRes.message).toContain('Content Editor PIN');
+  });
 });
 
 describe('SQLite Embedded Database Store', () => {
