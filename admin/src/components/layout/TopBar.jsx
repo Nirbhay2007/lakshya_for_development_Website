@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { CloudUpload, ExternalLink, Menu, CheckCircle2 } from 'lucide-react';
+import { CloudUpload, Globe, Menu, CheckCircle2 } from 'lucide-react';
 import { useAdminStore } from '../../store/useAdminStore';
 import CMSModal from '../ui/CMSModal';
+import LivePreviewModal from '../ui/LivePreviewModal';
 
 export default function TopBar({ onMenuClick }) {
   const publishAll = useAdminStore((state) => state.publishAll);
   const draftFlags = useAdminStore((state) => state.draftFlags);
+  const role = useAdminStore((state) => state.role || 'superadmin');
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   // Count active drafts
   const draftKeys = Object.keys(draftFlags).filter((key) => draftFlags[key]);
@@ -55,33 +58,42 @@ export default function TopBar({ onMenuClick }) {
 
         {/* Global Toolbar */}
         <div className="flex items-center gap-3">
-          {/* Preview Website */}
-          <a
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-admin-border text-xs text-admin-text/80 hover:text-admin-text hover:bg-white/5 transition-colors font-medium"
-          >
-            <span className="hidden sm:inline">Preview Site</span>
-            <ExternalLink className="w-3.5 h-3.5 text-admin-muted" />
-          </a>
-
-          {/* Publish Action */}
+          {/* Live Visual Preview Button */}
           <button
-            onClick={() => setIsPublishModalOpen(true)}
-            disabled={draftCount === 0}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-              draftCount > 0
-                ? 'bg-admin-accent border-transparent text-white hover:bg-green-700 shadow-md cursor-pointer'
-                : 'bg-white/5 border-admin-border text-admin-muted cursor-not-allowed'
-            }`}
+            type="button"
+            onClick={() => setIsPreviewOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-admin-border bg-admin-surface hover:bg-white/5 text-xs text-admin-text/90 transition-all font-semibold cursor-pointer shadow-sm hover:border-admin-accent"
           >
-            <CloudUpload className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Publish All</span>
-            <span className="sm:hidden">Publish</span>
+            <Globe className="w-3.5 h-3.5 text-admin-accent-hi" />
+            <span className="hidden sm:inline">Live Preview</span>
+            <span className="sm:hidden">Preview</span>
           </button>
+
+          {/* Publish Action (Super Admin & Editor only) */}
+          {role !== 'finance' && (
+            <button
+              onClick={() => setIsPublishModalOpen(true)}
+              disabled={draftCount === 0}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                draftCount > 0
+                  ? 'bg-admin-accent border-transparent text-white hover:bg-green-700 shadow-md cursor-pointer'
+                  : 'bg-white/5 border-admin-border text-admin-muted cursor-not-allowed'
+              }`}
+            >
+              <CloudUpload className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">Publish All</span>
+              <span className="sm:hidden">Publish</span>
+            </button>
+          )}
         </div>
       </header>
+
+      {/* Live Preview Modal */}
+      <LivePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        initialPath="/"
+      />
 
       {/* Confirmation Modal */}
       <CMSModal
@@ -115,7 +127,7 @@ export default function TopBar({ onMenuClick }) {
             ))}
           </ul>
           <p className="text-xs text-admin-muted">
-            Note: In production environments, this clears the draft indicator banners. To persist files permanently to your repo, remember to export the JSON files and commit them.
+            Note: In production environments, this clears the draft indicator banners.
           </p>
         </div>
       </CMSModal>

@@ -101,6 +101,12 @@ export default function AboutEditor() {
       <PageHeader
         title="About Section Editor"
         description="Configure details for the Who We Are introduction preview, corporate Mission/Vision statements, and core institutional values."
+        sectionKey="about"
+        onRollback={(restored) => {
+          setData(restored);
+          setIsDirty(false);
+          setSectionDirty('about', false);
+        }}
       />
 
       {/* Tabs list bar */}

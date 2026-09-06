@@ -130,6 +130,12 @@ export default function HeroEditor() {
       <PageHeader
         title="Hero Slider Editor"
         description="Configure headlines, button links, background images, and timings for the home page banner slider."
+        sectionKey="hero"
+        onRollback={(restored) => {
+          setData(restored);
+          setIsDirty(false);
+          setSectionDirty('hero', false);
+        }}
         actions={
           <button
             onClick={addSlide}

@@ -18,10 +18,15 @@ dist-ssr
 .env.local
 !.env.example
 
-# Server auth & secrets (never commit)
+# Server auth, databases & secrets (never commit)
 server/data/auth.json
 server/data/.jwt_secret
 server/data/submissions.json
+server/data/donations.json
+server/data/subscribers.json
+server/data/*.db*
+*.db
+*.db-journal
 server/backups/
 
 # Archive files

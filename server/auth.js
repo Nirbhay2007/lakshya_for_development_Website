@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 
 const AUTH_FILE = path.join(__dirname, 'data', 'auth.json');
 const DEFAULT_PIN = '123456';
+const DEFAULT_EDITOR_PIN = '234567';
+const DEFAULT_FINANCE_PIN = '345678';
 const DEFAULT_SECURITY_KEY = '999999';
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 5 * 60 * 1000; // 5 minutes
@@ -79,6 +81,18 @@ function readAuth() {
       parsed.isDefaultSecurityKey = true;
       migrated = true;
     }
+    // Role PINs initialization
+    if (!parsed.editorPinHash) {
+      parsed.editorPinHash = createSaltedHash(DEFAULT_EDITOR_PIN);
+      parsed.isDefaultEditor = true;
+      migrated = true;
+    }
+    if (!parsed.financePinHash) {
+      parsed.financePinHash = createSaltedHash(DEFAULT_FINANCE_PIN);
+      parsed.isDefaultFinance = true;
+      migrated = true;
+    }
+
     if (parsed.isDefault === undefined) {
       parsed.isDefault = verifyCredential(DEFAULT_PIN, parsed.pinHash);
       migrated = true;
@@ -108,6 +122,10 @@ function readAuth() {
       const defaults = {
         pinHash: createSaltedHash(DEFAULT_PIN),
         isDefault: true,
+        editorPinHash: createSaltedHash(DEFAULT_EDITOR_PIN),
+        isDefaultEditor: true,
+        financePinHash: createSaltedHash(DEFAULT_FINANCE_PIN),
+        isDefaultFinance: true,
         securityKeyHash: createSaltedHash(DEFAULT_SECURITY_KEY),
         isDefaultSecurityKey: true,
         pinLockout: { attempts: 0, lockedUntil: null },
@@ -134,9 +152,9 @@ function writeAuth(data) {
 
 // --- JWT Helper ---
 
-function issueSessionToken(role = 'admin') {
+function issueSessionToken(role = 'superadmin', payload = {}) {
   return jwt.sign(
-    { role, issuedAt: Date.now() },
+    { role, ...payload, issuedAt: Date.now() },
     JWT_SECRET,
     { expiresIn: '8h' }
   );
@@ -173,22 +191,27 @@ function verifyPin(req, res) {
     });
   }
 
+  let matchedRole = null;
   if (verifyCredential(pin, auth.pinHash)) {
+    matchedRole = 'superadmin';
+  } else if (auth.editorPinHash && verifyCredential(pin, auth.editorPinHash)) {
+    matchedRole = 'editor';
+  } else if (auth.financePinHash && verifyCredential(pin, auth.financePinHash)) {
+    matchedRole = 'finance';
+  }
+
+  if (matchedRole) {
     // Successful login — reset lockout
     auth.pinLockout = { attempts: 0, lockedUntil: null };
-    
-    // Auto-upgrade legacy hash if needed
-    if (!auth.pinHash.includes(':')) {
-      auth.pinHash = createSaltedHash(pin);
-    }
     writeAuth(auth);
 
-    const token = issueSessionToken('admin');
+    const token = issueSessionToken(matchedRole);
 
     return res.json({
       success: true,
       token,
-      pinHash: auth.pinHash, // return stored hash for store compatibility
+      role: matchedRole,
+      pinHash: auth.pinHash,
       isDefaultPin: auth.isDefault,
       isDefaultSecurityKey: auth.isDefaultSecurityKey
     });
@@ -199,17 +222,12 @@ function verifyPin(req, res) {
       auth.pinLockout.lockedUntil = Date.now() + LOCKOUT_DURATION_MS;
     }
     writeAuth(auth);
-
-    const remaining = MAX_ATTEMPTS - auth.pinLockout.attempts;
-    const message = auth.pinLockout.attempts >= MAX_ATTEMPTS
-      ? 'Too many failed attempts. Locked out for 5 minutes.'
-      : `Incorrect PIN. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`;
-
+    const left = MAX_ATTEMPTS - auth.pinLockout.attempts;
     return res.status(401).json({
       success: false,
-      message,
-      wrongAttempts: auth.pinLockout.attempts,
-      lockoutUntil: auth.pinLockout.lockedUntil || null
+      message: left > 0 ? `Incorrect PIN. ${left} attempt(s) remaining.` : 'Too many failed attempts. Locked out for 5 minutes.',
+      remainingAttempts: Math.max(0, left),
+      lockoutUntil: auth.pinLockout.lockedUntil
     });
   }
 }
@@ -344,16 +362,33 @@ function requireAuth(req, res, next) {
 
   const decoded = verifySessionToken(authHeader);
   if (decoded) {
+    req.user = decoded;
     return next();
   }
 
   // Backward compatibility fallback for store migration
   const auth = readAuth();
   if (safeCompare(authHeader, auth.pinHash)) {
+    req.user = { role: 'superadmin' };
     return next();
   }
 
   return res.status(401).json({ success: false, message: 'Invalid or expired session token. Please log in again.' });
+}
+
+function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    requireAuth(req, res, () => {
+      const userRole = req.user?.role || 'superadmin';
+      if (userRole === 'superadmin' || allowedRoles.includes(userRole)) {
+        return next();
+      }
+      return res.status(403).json({
+        success: false,
+        message: `Access denied. Your role (${userRole}) is not permitted to perform this action.`
+      });
+    });
+  };
 }
 
 function enforceNonDefaultCredentials(req, res, next) {
@@ -367,12 +402,38 @@ function enforceNonDefaultCredentials(req, res, next) {
   next();
 }
 
+/** POST /api/auth/change-role-pin — body: { role: 'editor' | 'finance', newPin: '...' } */
+function changeRolePin(req, res) {
+  const { role, newPin } = req.body;
+  if (!role || !['editor', 'finance'].includes(role)) {
+    return res.status(400).json({ success: false, message: 'Role must be editor or finance.' });
+  }
+  if (!newPin || typeof newPin !== 'string' || newPin.length !== 6) {
+    return res.status(400).json({ success: false, message: 'PIN must be a 6-digit string.' });
+  }
+
+  const auth = readAuth();
+  const newHashed = createSaltedHash(newPin);
+  if (role === 'editor') {
+    auth.editorPinHash = newHashed;
+    auth.isDefaultEditor = false;
+  } else {
+    auth.financePinHash = newHashed;
+    auth.isDefaultFinance = false;
+  }
+  writeAuth(auth);
+
+  return res.json({ success: true, message: `${role.toUpperCase()} PIN updated successfully.` });
+}
+
 module.exports = {
   verifyPin,
   verifySecurityKey,
   changeSecurityKey,
   changePin,
+  changeRolePin,
   requireAuth,
+  requireRole,
   enforceNonDefaultCredentials,
   verifySecurityHeader,
   createSaltedHash,

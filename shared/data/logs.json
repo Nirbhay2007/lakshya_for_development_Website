@@ -1,5 +1,12 @@
 [
   {
+    "id": "nt1laky5v",
+    "timestamp": 1788667379652,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in using PIN authentication"
+  },
+  {
     "id": "2vz1r24v2",
     "timestamp": 1782571901991,
     "action": "Security",

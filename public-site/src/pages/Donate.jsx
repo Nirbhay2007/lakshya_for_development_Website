@@ -25,7 +25,9 @@ const formatRedirectUrl = (rawUrl) => {
 const Donate = () => {
   const [amount, setAmount] = useState('');
   const [selectedPurpose, setSelectedPurpose] = useState('');
-  const [formState, setFormState] = useState({ name: '', email: '', phone: '' });
+  const [frequency, setFrequency] = useState('one-time'); // 'one-time' | 'monthly'
+  const [claim80g, setClaim80g] = useState(false);
+  const [formState, setFormState] = useState({ name: '', email: '', phone: '', panNumber: '', address: '' });
   
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [copiedAccount, setCopiedAccount] = useState(false);
@@ -34,7 +36,7 @@ const Donate = () => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [successDetails, setSuccessDetails] = useState({ name: '', amount: '', purpose: '', redirectUrl: '' });
+  const [successDetails, setSuccessDetails] = useState({ name: '', amount: '', purpose: '', redirectUrl: '', id: '', transactionRef: '', receiptNumber: '', claim80g: false });
   const [redirectCountdown, setRedirectCountdown] = useState(3);
 
   const [showFailureModal, setShowFailureModal] = useState(false);
@@ -187,6 +189,22 @@ const Donate = () => {
       return;
     }
 
+    if (claim80g) {
+      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+      if (!formState.panNumber || !panRegex.test(formState.panNumber.trim().toUpperCase())) {
+        alert('Please enter a valid 10-character Indian PAN Number (e.g. ABCDE1234F) to claim 80G tax deduction.');
+        return;
+      }
+      if (!formState.address || formState.address.trim().length < 5) {
+        alert('Please enter your full postal address as required by the Income Tax Department for 80G Form 10BD.');
+        return;
+      }
+      if (!formState.email || !formState.email.trim()) {
+        alert('Please provide an email address so we can dispatch your 80G certificate.');
+        return;
+      }
+    }
+
     const purposeName = selectedPurpose || 'General NGO Support';
 
     // Razorpay Payment Flow
@@ -270,7 +288,11 @@ const Donate = () => {
                 email: formState.email,
                 phone: formState.phone,
                 amount: Number(amount),
-                purpose: purposeName
+                purpose: purposeName,
+                claim80g,
+                panNumber: formState.panNumber?.trim().toUpperCase(),
+                address: formState.address?.trim(),
+                frequency
               })
             });
             const verifyData = await verifyRes.json();
@@ -292,11 +314,15 @@ const Donate = () => {
                 name: formState.name,
                 amount: Number(amount).toLocaleString('en-IN'),
                 purpose: purposeName,
-                redirectUrl: redirectTarget
+                redirectUrl: redirectTarget,
+                id: verifyData.donation?.id || '',
+                transactionRef: verifyData.donation?.transactionRef || response.razorpay_payment_id || '',
+                receiptNumber: verifyData.donation?.receiptNumber || '',
+                claim80g
               });
               setShowFailureModal(false);
               setShowSuccessModal(true);
-              setFormState({ name: '', email: '', phone: '' });
+              setFormState({ name: '', email: '', phone: '', panNumber: '', address: '' });
               setAmount('');
               setSelectedPurpose('');
             } else {
@@ -432,6 +458,33 @@ const Donate = () => {
               {settings.enableForm !== false ? (
                 <form onSubmit={handleDonateSubmit} className="space-y-6">
 
+                  {/* Giving Frequency Selector */}
+                  <div className="bg-charcoal/5 p-1.5 rounded-full flex gap-1 border border-charcoal/10">
+                    <button
+                      type="button"
+                      onClick={() => setFrequency('one-time')}
+                      className={`flex-1 py-2.5 px-4 rounded-full text-xs md:text-sm font-semibold transition-all ${
+                        frequency === 'one-time'
+                          ? 'bg-forest-600 text-white shadow-sm'
+                          : 'text-charcoal/70 hover:text-charcoal'
+                      }`}
+                    >
+                      Give Once
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFrequency('monthly')}
+                      className={`flex-1 py-2.5 px-4 rounded-full text-xs md:text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                        frequency === 'monthly'
+                          ? 'bg-forest-600 text-white shadow-sm'
+                          : 'text-charcoal/70 hover:text-charcoal'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Monthly Giving</span>
+                    </button>
+                  </div>
+
                   {/* Preset donation purpose/cause buttons */}
                   {presets.length > 0 && (
                     <div className="space-y-3 pt-2">
@@ -555,6 +608,59 @@ const Donate = () => {
                       maxLength={15}
                       pattern="[0-9+\-\s]{7,15}"
                     />
+
+                    {/* 80G Tax Exemption Toggle */}
+                    <div className="md:col-span-2 pt-2">
+                      <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="claim80g"
+                            checked={claim80g}
+                            onChange={(e) => setClaim80g(e.target.checked)}
+                            className="w-5 h-5 rounded border-amber-400 text-forest-600 focus:ring-forest-500 cursor-pointer"
+                          />
+                          <span className="text-xs md:text-sm font-semibold text-charcoal font-sans">
+                            Claim 50% Tax Exemption Certificate (Section 80G)
+                          </span>
+                        </label>
+                        <p className="text-[11px] text-earth-700/80 font-sans font-light pl-8">
+                          Indian Income Tax Department (Form 10BD) requires donor's PAN and postal address to issue valid 80G tax exemption certificates.
+                        </p>
+
+                        {claim80g && (
+                          <motion.div
+                            initial={shouldReduceMotion ? {} : { opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={shouldReduceMotion ? {} : { opacity: 0, height: 0 }}
+                            className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-4"
+                          >
+                            <FormField
+                              label="PAN Number (Required for 80G)"
+                              id="floating_pan"
+                              name="panNumber"
+                              value={formState.panNumber}
+                              onChange={(e) => setFormState(prev => ({ ...prev, panNumber: e.target.value.toUpperCase() }))}
+                              required={claim80g}
+                              placeholder="e.g. ABCDE1234F"
+                              maxLength={10}
+                            />
+                            <div className="md:col-span-2">
+                              <FormField
+                                label="Full Postal Address (Required for 80G)"
+                                id="floating_address"
+                                name="address"
+                                value={formState.address}
+                                onChange={handleInputChange}
+                                required={claim80g}
+                                placeholder="House/Flat No., Street, City, State, PIN"
+                                maxLength={250}
+                              />
+                            </div>
+                          </motion.div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Submit CTA */}
@@ -810,6 +916,17 @@ const Donate = () => {
 
               {/* Action buttons / Redirect Link */}
               <div className="pt-2 space-y-2.5">
+                {successDetails.id && (
+                  <a
+                    href={`/api/donations/${successDetails.id}/receipt`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3.5 px-6 rounded-full font-bold bg-forest-600 hover:bg-forest-700 text-white flex items-center justify-center gap-2 shadow-lg transition-all text-sm cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download Official 80G Receipt (PDF)</span>
+                  </a>
+                )}
                 {successDetails.redirectUrl ? (
                   <>
                     <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center text-xs font-semibold text-amber-800 font-sans">

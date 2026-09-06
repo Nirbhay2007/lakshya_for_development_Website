@@ -71,6 +71,22 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     }
   ];
 
+  const role = useAdminStore((state) => state.role || 'superadmin');
+
+  const visibleGroups = menuGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => {
+      if (role === 'superadmin') return true;
+      if (role === 'editor') {
+        return ['hero', 'events', 'about', 'programmes', 'impact', 'gallery', 'partners', 'team', 'contact', 'careers', 'legal', 'media'].includes(item.key);
+      }
+      if (role === 'finance') {
+        return ['dashboard', 'submissions', 'donations', 'newsletter'].includes(item.key);
+      }
+      return true;
+    })
+  })).filter(group => group.items.length > 0);
+
   const handleLock = () => {
     logout();
     navigate('/login');
@@ -98,7 +114,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
         {/* Navigation Links */}
         <div className="flex-1 px-4 py-6 space-y-6">
-          {menuGroups.map((group, gIdx) => (
+          {visibleGroups.map((group, gIdx) => (
             <div key={gIdx} className="space-y-1">
               <span className="px-3 text-[10px] font-bold text-admin-muted tracking-wider uppercase block mb-2">
                 {group.title}
@@ -160,9 +176,21 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
       {/* Lock Portal Bottom Actions */}
       <div className="p-4 border-t border-admin-border bg-black/20 mt-auto shrink-0">
+        <div className="mb-3 px-1 flex items-center justify-between">
+          <span className="text-[11px] text-admin-muted font-medium">Role:</span>
+          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+            role === 'superadmin'
+              ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+              : role === 'finance'
+              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+              : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+          }`}>
+            {role === 'superadmin' ? 'Super Admin' : role === 'finance' ? 'Finance' : 'Editor'}
+          </span>
+        </div>
         <button
           onClick={handleLock}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-admin-border bg-admin-surface hover:bg-admin-surface-2 text-admin-danger hover:border-admin-danger/30 transition-all font-medium text-xs uppercase tracking-wider"
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-admin-border bg-admin-surface hover:bg-admin-surface-2 text-admin-danger hover:border-admin-danger/30 transition-all font-medium text-xs uppercase tracking-wider cursor-pointer"
         >
           <Lock className="w-4 h-4 text-admin-danger shrink-0" />
           <span>Lock Portal</span>

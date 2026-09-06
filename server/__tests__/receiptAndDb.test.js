@@ -1,0 +1,139 @@
+import { describe, test, expect } from 'vitest';
+import receiptGen from '../receiptGenerator.js';
+const { numberToIndianWords, generate80GReceiptPDF } = receiptGen;
+import auth from '../auth.js';
+const { signToken, verifyToken, ROLE_PERMISSIONS } = auth;
+import db from '../db.js';
+
+describe('80G Receipt PDF & Indian Number to Words Generator', () => {
+  test('converts numbers to Indian English currency words accurately', () => {
+    expect(numberToIndianWords(0)).toBe('Zero Rupees Only');
+    expect(numberToIndianWords(500)).toBe('Rupees Five Hundred Only');
+    expect(numberToIndianWords(2500)).toBe('Rupees Two Thousand Five Hundred Only');
+    expect(numberToIndianWords(125000)).toBe('Rupees One Lakh Twenty Five Thousand Only');
+    expect(numberToIndianWords(10000000)).toBe('Rupees One Crore Only');
+  });
+
+  test('generates valid 80G tax exemption PDF buffer', async () => {
+    const sampleDonation = {
+      id: 'don_test_999',
+      receiptNumber: 'LAK/2025-26/00999',
+      amount: 5000,
+      currency: 'INR',
+      donorName: 'Rahul Sharma',
+      donorEmail: 'rahul.sharma@example.com',
+      donorPhone: '+91 98765 43210',
+      donorPan: 'ABCDE1234F',
+      donorAddress: '123 Green Park, New Delhi 110016',
+      purpose: 'Education for Underprivileged Children',
+      frequency: 'one-time',
+      is80gClaimed: 1,
+      paymentMethod: 'Razorpay',
+      transactionRef: 'pay_test_xyz123',
+      timestamp: new Date().toISOString()
+    };
+
+    const pdfBuffer = await generate80GReceiptPDF(sampleDonation, {
+      siteName: 'LAKSHYA FOUNDATION',
+      contactEmail: 'contact@lakshyango.org'
+    });
+
+    expect(Buffer.isBuffer(pdfBuffer)).toBe(true);
+    expect(pdfBuffer.length).toBeGreaterThan(1000);
+    // PDF files start with magic bytes %PDF
+    expect(pdfBuffer.toString('utf-8', 0, 4)).toBe('%PDF');
+  });
+});
+
+describe('Role-Based Access Control (RBAC) Token Logic', () => {
+  test('signs and verifies role-scoped session tokens', () => {
+    const token = auth.issueSessionToken('finance', { username: 'finance_officer' });
+    const decoded = auth.verifySessionToken(token);
+    expect(decoded).toBeTruthy();
+    expect(decoded.role).toBe('finance');
+    expect(decoded.username).toBe('finance_officer');
+  });
+
+  test('superadmin session token resolves properly', () => {
+    const adminToken = auth.issueSessionToken('superadmin', { username: 'admin' });
+    const decoded = auth.verifySessionToken(adminToken);
+    expect(decoded).toBeTruthy();
+    expect(decoded.role).toBe('superadmin');
+  });
+});
+
+describe('SQLite Embedded Database Store', () => {
+  test('records and retrieves donations with 80G flags', () => {
+    const testDonation = {
+      id: 'don_unit_' + Date.now(),
+      receiptNumber: 'LAK/TEST/' + Date.now(),
+      amount: 1500,
+      currency: 'INR',
+      donorName: 'Pooja Verma',
+      donorEmail: 'pooja.verma@example.com',
+      donorPhone: '+91 99887 76655',
+      donorPan: 'PQRST5678G',
+      donorAddress: '45 Lake View, Bengaluru',
+      purpose: 'Tree Plantation Drive',
+      frequency: 'monthly',
+      is80gClaimed: 1,
+      paymentMethod: 'UPI',
+      transactionRef: 'upi_test_' + Date.now(),
+      status: 'captured',
+      timestamp: new Date().toISOString()
+    };
+
+    const saved = db.saveDonation(testDonation);
+    expect(saved.id).toBe(testDonation.id);
+
+    const fetched = db.getDonationById(testDonation.id);
+    expect(fetched).toBeTruthy();
+    expect(fetched.panNumber).toBe('PQRST5678G');
+    expect(fetched.claim80g).toBe(true);
+    expect(fetched.frequency).toBe('monthly');
+
+    // Clean up test entry
+    db.deleteDonation(testDonation.id);
+  });
+
+  test('records and updates submission lead lifecycle status and notes', () => {
+    const testSub = {
+      id: 'sub_unit_' + Date.now(),
+      type: 'Volunteer Application',
+      name: 'Amit Patel',
+      email: 'amit.patel@example.com',
+      phone: '+91 91234 56789',
+      subject: 'Volunteer for Teaching',
+      message: 'I want to volunteer every weekend for maths teaching.',
+      status: 'NEW',
+      date: new Date().toISOString()
+    };
+
+    db.saveSubmission(testSub);
+    const fetched = db.getSubmissionById(testSub.id);
+    expect(fetched).toBeTruthy();
+    expect(fetched.status).toBe('NEW');
+
+    const updated = db.updateSubmissionStatus(testSub.id, 'CONTACTED', 'Called Amit on phone, confirmed orientation for Sunday');
+    expect(updated.status).toBe('CONTACTED');
+    expect(updated.notes).toContain('orientation for Sunday');
+
+    // Clean up test entry
+    db.deleteSubmission(testSub.id);
+    expect(db.getSubmissionById(testSub.id)).toBeUndefined();
+  });
+
+  test('stores and queries section revisions', () => {
+    const revId = 'rev_unit_' + Date.now();
+    db.saveRevision('about', { mission: 'Empowering children through quality education' }, 'superadmin', revId);
+
+    const revisions = db.getRevisions('about', 5);
+    expect(Array.isArray(revisions)).toBe(true);
+    expect(revisions.length).toBeGreaterThan(0);
+    expect(revisions[0].section).toBe('about');
+
+    const latest = db.getRevisionById(revId);
+    expect(latest).toBeTruthy();
+    expect(latest.content.mission).toBe('Empowering children through quality education');
+  });
+});

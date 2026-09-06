@@ -220,6 +220,12 @@ export default function DonateEditor() {
       <PageHeader
         title="Donate Page Editor"
         description="Configure preset donation thresholds, UPI QR code images, account credentials, and tax deduction 80G legal notices."
+        sectionKey="donate"
+        onRollback={(restored) => {
+          setData(restored);
+          setIsDirty(false);
+          setSectionDirty('donate', false);
+        }}
       />
 
       {/* Tabs list bar */}

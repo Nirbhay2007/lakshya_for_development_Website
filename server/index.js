@@ -8,10 +8,12 @@ const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 const sharp = require('sharp');
-const { verifyPin, verifySecurityKey, changeSecurityKey, changePin, requireAuth, enforceNonDefaultCredentials, verifySecurityHeader, hashPIN, readAuth, writeAuth } = require('./auth');
+const { verifyPin, verifySecurityKey, changeSecurityKey, changePin, changeRolePin, requireAuth, requireRole, enforceNonDefaultCredentials, verifySecurityHeader, hashPIN, readAuth, writeAuth } = require('./auth');
 const AdmZip = require('adm-zip');
 const nodemailer = require('nodemailer');
 const sanitizeHtml = require('sanitize-html');
+const db = require('./db');
+const { generate80GReceiptPDF } = require('./receiptGenerator');
 
 // Timing-safe string comparison to prevent timing attacks
 function safeCompare(a, b) {
@@ -90,24 +92,7 @@ const VALID_SECTIONS = [
 const SUBMISSIONS_FILE = path.join(__dirname, 'data', 'submissions.json');
 
 function saveSubmission(submission) {
-  let list = [];
-  const dir = path.dirname(SUBMISSIONS_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  if (fs.existsSync(SUBMISSIONS_FILE)) {
-    try {
-      list = JSON.parse(fs.readFileSync(SUBMISSIONS_FILE, 'utf-8'));
-      if (!Array.isArray(list)) list = [];
-    } catch (e) {
-      console.error('[Submissions] Failed to parse submissions log:', e.message);
-    }
-  }
-  list.push(submission);
-  if (list.length > 1000) {
-    list = list.slice(list.length - 1000);
-  }
-  fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+  return db.saveSubmission(submission);
 }
 
 const DONATIONS_FILE = path.join(__dirname, 'data', 'donations.json');
@@ -115,68 +100,11 @@ const NEWSLETTER_FILE = path.join(SHARED_DATA_DIR, 'newsletter.json');
 
 function addNewsletterSubscriber(email, typeTag = 'General Updates') {
   if (!email || typeof email !== 'string' || !email.trim()) return;
-  const emailNormalized = email.trim().toLowerCase();
-  let list = [];
-  if (fs.existsSync(NEWSLETTER_FILE)) {
-    try {
-      const raw = fs.readFileSync(NEWSLETTER_FILE, 'utf-8');
-      list = JSON.parse(raw);
-      if (!Array.isArray(list)) list = [];
-    } catch (e) {
-      list = [];
-    }
-  }
-
-  const tagToUse = typeTag || 'General Updates';
-  const existingIndex = list.findIndex(s => s.email === emailNormalized);
-  if (existingIndex >= 0) {
-    let sub = list[existingIndex];
-    let types = Array.isArray(sub.types) ? [...sub.types] : (sub.type ? [sub.type] : ['General Updates']);
-    if (!types.includes(tagToUse)) {
-      types.push(tagToUse);
-    }
-    list[existingIndex] = { ...sub, types };
-  } else {
-    list.push({
-      email: emailNormalized,
-      date: new Date().toISOString(),
-      types: [tagToUse]
-    });
-  }
-
-  if (!fs.existsSync(SHARED_DATA_DIR)) {
-    fs.mkdirSync(SHARED_DATA_DIR, { recursive: true });
-  }
-  safeWriteFileSync(NEWSLETTER_FILE, list);
+  db.addSubscriber(email.trim().toLowerCase());
 }
 
 function saveDonation(donation) {
-  let list = [];
-  const dir = path.dirname(DONATIONS_FILE);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  if (fs.existsSync(DONATIONS_FILE)) {
-    try {
-      list = JSON.parse(fs.readFileSync(DONATIONS_FILE, 'utf-8'));
-      if (!Array.isArray(list)) list = [];
-    } catch (e) {
-      console.error('[Donations] Failed to parse donations log:', e.message);
-    }
-  }
-  // Deduplicate transactionRef to prevent race condition duplicate logs
-  if (donation.transactionRef) {
-    const exists = list.some(d => d.transactionRef === donation.transactionRef);
-    if (exists) {
-      console.warn(`[Donations] Transaction ${donation.transactionRef} already recorded. Skipping duplicate.`);
-      return;
-    }
-  }
-  list.push(donation);
-  if (list.length > 1000) {
-    list = list.slice(list.length - 1000);
-  }
-  safeWriteFileSync(DONATIONS_FILE, JSON.stringify(list, null, 2));
+  const saved = db.saveDonation(donation);
 
   // Auto-subscribe donor email to newsletter with donation cause tag
   if (donation.email) {
@@ -218,6 +146,8 @@ function saveDonation(donation) {
       console.error('[Donations] Failed to auto-increment raisedAmount in presets:', e.message);
     }
   }
+
+  return saved;
 }
 
 // Atomic write utility
@@ -560,9 +490,7 @@ app.post('/api/auth/reset-pin-confirm', authLimiter, (req, res) => {
     auth.isDefault = false;
     auth.pinLockout = { attempts: 0, lockedUntil: null };
 
-    const dir = path.dirname(authPath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(authPath, JSON.stringify(auth, null, 2), 'utf-8');
+    safeWriteFileSync(authPath, auth);
 
     pinResetCache = { code: null, expiresAt: null };
     return res.json({ success: true, message: 'Login PIN updated successfully. You can now log in.' });
@@ -570,6 +498,9 @@ app.post('/api/auth/reset-pin-confirm', authLimiter, (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to update login PIN.' });
   }
 });
+
+// Role PIN update route (Super Admin only)
+app.post('/api/auth/change-role-pin', requireAuth, changeRolePin);
 
 // 3. MASTER SECURITY KEY RESET REQUEST
 app.post('/api/auth/reset-master-request', authLimiter, async (req, res) => {
@@ -846,6 +777,13 @@ app.post('/api/cms/:section', requireAuth, enforceNonDefaultCredentials, (req, r
     const payloadToSave = section === 'settings' ? data : sanitizePayload(data);
     safeWriteFileSync(filePath, payloadToSave);
     
+    // Record snapshot in SQLite revision history
+    try {
+      db.saveRevision(section, payloadToSave, req.user?.role || 'Admin');
+    } catch (revErr) {
+      console.warn('[REVISION WARN] Failed to save revision:', revErr.message);
+    }
+
     // Invalidate in-memory cache on writes
     cmsCache = null;
 
@@ -854,6 +792,37 @@ app.post('/api/cms/:section', requireAuth, enforceNonDefaultCredentials, (req, r
     console.error(`Error writing section "${section}":`, e.message);
     return res.status(500).json({ success: false, message: 'Failed to save section data.' });
   }
+});
+
+// --- CMS Revision History & Rollback Routes ---
+app.get('/api/cms/:section/revisions', requireAuth, (req, res) => {
+  const { section } = req.params;
+  if (!VALID_SECTIONS.includes(section)) {
+    return res.status(400).json({ success: false, message: `Invalid section: ${section}` });
+  }
+  const revisions = db.getRevisions(section);
+  return res.json({ success: true, revisions });
+});
+
+app.post('/api/cms/:section/revisions/:id/rollback', requireAuth, enforceNonDefaultCredentials, (req, res) => {
+  const { section, id } = req.params;
+  if (!VALID_SECTIONS.includes(section)) {
+    return res.status(400).json({ success: false, message: `Invalid section: ${section}` });
+  }
+  const revision = db.getRevisionById(id);
+  if (!revision || revision.section !== section) {
+    return res.status(404).json({ success: false, message: 'Revision snapshot not found.' });
+  }
+
+  const filePath = path.join(SHARED_DATA_DIR, `${section}.json`);
+  safeWriteFileSync(filePath, revision.content);
+  cmsCache = null;
+
+  try {
+    db.saveRevision(section, revision.content, `${req.user?.role || 'Admin'} (Rollback)`);
+  } catch (e) {}
+
+  return res.json({ success: true, message: `Rolled back to revision from ${new Date(revision.timestamp).toLocaleString()}`, content: revision.content });
 });
 
 // --- Backup & Restore Routes (requires Master Security Key) ---
@@ -1007,14 +976,32 @@ app.post('/api/media/upload', requireAuth, (req, res, next) => {
       fs.mkdirSync(MEDIA_DIR, { recursive: true });
     }
 
-    const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.webp`;
-    const outputPath = path.join(MEDIA_DIR, filename);
+    const baseId = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const fullFilename = `${baseId}_full.webp`;
+    const mdFilename = `${baseId}_md.webp`;
+    const thumbFilename = `${baseId}_thumb.webp`;
 
-    // Optimize image and save to webp
+    const fullPath = path.join(MEDIA_DIR, fullFilename);
+    const mdPath = path.join(MEDIA_DIR, mdFilename);
+    const thumbPath = path.join(MEDIA_DIR, thumbFilename);
+
+    // 1. Full size WebP (max 1600px wide, 82% quality)
     await sharp(req.file.path)
-      .resize({ width: 1920, withoutEnlargement: true }) // Max 1920px wide
+      .resize({ width: 1600, withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toFile(fullPath);
+
+    // 2. Medium size WebP (max 800px wide, 80% quality)
+    await sharp(req.file.path)
+      .resize({ width: 800, withoutEnlargement: true })
       .webp({ quality: 80 })
-      .toFile(outputPath);
+      .toFile(mdPath);
+
+    // 3. Thumbnail WebP (max 300px wide, 75% quality)
+    await sharp(req.file.path)
+      .resize({ width: 300, withoutEnlargement: true })
+      .webp({ quality: 75 })
+      .toFile(thumbPath);
 
     // Generate tiny blurhash (base64)
     const blurhashBuffer = await sharp(req.file.path)
@@ -1023,7 +1010,9 @@ app.post('/api/media/upload', requireAuth, (req, res, next) => {
       .toBuffer();
     
     const blurDataUrl = `data:image/webp;base64,${blurhashBuffer.toString('base64')}`;
-    const publicUrl = `/media/${filename}`;
+    const publicUrl = `/media/${fullFilename}`;
+    const mdUrl = `/media/${mdFilename}`;
+    const thumbUrl = `/media/${thumbFilename}`;
 
     // Save blurhash mapping
     let blurhashes = {};
@@ -1038,7 +1027,7 @@ app.post('/api/media/upload', requireAuth, (req, res, next) => {
     // Cleanup temp file
     fs.unlinkSync(req.file.path);
 
-    return res.json({ success: true, url: publicUrl, blurDataUrl });
+    return res.json({ success: true, url: publicUrl, mdUrl, thumbUrl, blurDataUrl });
   } catch (error) {
     console.error('Image processing failed:', error);
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
@@ -1338,16 +1327,7 @@ app.post('/api/newsletter/subscribe', publicFormLimiter, (req, res) => {
 // Admin list subscribers endpoint
 app.get('/api/newsletter/subscribers', requireAuth, (req, res) => {
   try {
-    let subscribers = [];
-    if (fs.existsSync(NEWSLETTER_FILE)) {
-      try {
-        const raw = fs.readFileSync(NEWSLETTER_FILE, 'utf-8');
-        subscribers = JSON.parse(raw);
-        if (!Array.isArray(subscribers)) subscribers = [];
-      } catch (e) {
-        subscribers = [];
-      }
-    }
+    const subscribers = db.getSubscribers();
     return res.json({ success: true, subscribers });
   } catch (err) {
     console.error('Failed to fetch subscribers:', err);
@@ -1359,51 +1339,22 @@ app.get('/api/newsletter/subscribers', requireAuth, (req, res) => {
 app.delete('/api/newsletter/subscribers/:email', requireAuth, (req, res) => {
   const emailToDelete = req.params.email;
   if (!emailToDelete) {
-    return res.status(400).json({ success: false, message: 'Email param is required.' });
+    return res.status(400).json({ success: false, message: 'Email parameter is required.' });
   }
-
   try {
-    let subscribers = [];
-    if (fs.existsSync(NEWSLETTER_FILE)) {
-      try {
-        const raw = fs.readFileSync(NEWSLETTER_FILE, 'utf-8');
-        subscribers = JSON.parse(raw);
-        if (!Array.isArray(subscribers)) subscribers = [];
-      } catch (e) {
-        subscribers = [];
-      }
-    }
-
-    const normalizedEmail = emailToDelete.trim().toLowerCase();
-    const filtered = subscribers.filter(s => s.email !== normalizedEmail);
-
-    if (!fs.existsSync(SHARED_DATA_DIR)) {
-      fs.mkdirSync(SHARED_DATA_DIR, { recursive: true });
-    }
-    safeWriteFileSync(NEWSLETTER_FILE, filtered);
-
+    db.removeSubscriber(emailToDelete);
     return res.json({ success: true, message: 'Subscriber removed successfully.' });
   } catch (err) {
-    console.error('Failed to delete subscriber:', err);
-    return res.status(500).json({ success: false, message: 'Failed to delete subscriber.' });
+    console.error('Failed to remove subscriber:', err);
+    return res.status(500).json({ success: false, message: 'Failed to remove subscriber.' });
   }
 });
 
-// Admin get all submissions endpoint
+// Admin list submissions endpoint
 app.get('/api/submissions', requireAuth, (req, res) => {
   try {
-    let list = [];
-    if (fs.existsSync(SUBMISSIONS_FILE)) {
-      try {
-        list = JSON.parse(fs.readFileSync(SUBMISSIONS_FILE, 'utf-8'));
-        if (!Array.isArray(list)) list = [];
-      } catch (e) {
-        list = [];
-      }
-    }
-    // Sort submissions by newest first
-    list.sort((a, b) => new Date(b.date) - new Date(a.date));
-    return res.json({ success: true, submissions: list });
+    const submissions = db.getSubmissions(req.query);
+    return res.json({ success: true, submissions });
   } catch (err) {
     console.error('Failed to fetch submissions:', err);
     return res.status(500).json({ success: false, message: 'Failed to retrieve form submissions.' });
@@ -1413,38 +1364,18 @@ app.get('/api/submissions', requireAuth, (req, res) => {
 // Admin update submission status endpoint
 app.patch('/api/submissions/:id', requireAuth, (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, notes } = req.body;
 
   if (!id || !status) {
     return res.status(400).json({ success: false, message: 'ID and status are required.' });
   }
 
   try {
-    let list = [];
-    if (fs.existsSync(SUBMISSIONS_FILE)) {
-      try {
-        list = JSON.parse(fs.readFileSync(SUBMISSIONS_FILE, 'utf-8'));
-        if (!Array.isArray(list)) list = [];
-      } catch (e) {
-        list = [];
-      }
-    }
-
-    let found = false;
-    const updatedList = list.map((item) => {
-      if (item.id === id) {
-        found = true;
-        return { ...item, status };
-      }
-      return item;
-    });
-
-    if (!found) {
+    const updated = db.updateSubmissionStatus(id, status, notes);
+    if (!updated) {
       return res.status(404).json({ success: false, message: 'Submission not found.' });
     }
-
-    fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify(updatedList, null, 2), 'utf-8');
-    return res.json({ success: true, message: 'Submission status updated.' });
+    return res.json({ success: true, submission: updated, message: 'Submission status updated.' });
   } catch (err) {
     console.error('Failed to update submission status:', err);
     return res.status(500).json({ success: false, message: 'Failed to update submission status.' });
@@ -1454,24 +1385,15 @@ app.patch('/api/submissions/:id', requireAuth, (req, res) => {
 // Admin delete submission endpoint
 app.delete('/api/submissions/:id', requireAuth, (req, res) => {
   const { id } = req.params;
-
   if (!id) {
     return res.status(400).json({ success: false, message: 'ID is required.' });
   }
 
   try {
-    let list = [];
-    if (fs.existsSync(SUBMISSIONS_FILE)) {
-      try {
-        list = JSON.parse(fs.readFileSync(SUBMISSIONS_FILE, 'utf-8'));
-        if (!Array.isArray(list)) list = [];
-      } catch (e) {
-        list = [];
-      }
+    const deleted = db.deleteSubmission(id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Submission not found.' });
     }
-
-    const filtered = list.filter((item) => item.id !== id);
-    fs.writeFileSync(SUBMISSIONS_FILE, JSON.stringify(filtered, null, 2), 'utf-8');
     return res.json({ success: true, message: 'Submission deleted successfully.' });
   } catch (err) {
     console.error('Failed to delete submission:', err);
@@ -1479,30 +1401,32 @@ app.delete('/api/submissions/:id', requireAuth, (req, res) => {
   }
 });
 
-// Manual donation record endpoint — protected with auth (admin-only)
-// Previously public, now locked down to prevent fake donation injection
+// Manual donation record endpoint
 app.post('/api/donations/record', requireAuth, (req, res) => {
-  const { name, email, phone, amount, purpose, paymentMethod, transactionRef } = req.body;
-  if (!name || !email || !amount || Number(amount) <= 0) {
-    return res.status(400).json({ success: false, message: 'Name, email, and valid donation amount are required.' });
+  const { name, email, phone, amount, purpose, paymentMethod, transactionRef, claim80g, panNumber, address, frequency } = req.body;
+  if (!name || !amount || Number(amount) <= 0) {
+    return res.status(400).json({ success: false, message: 'Name and valid donation amount are required.' });
   }
 
   try {
     const donationRecord = {
-      id: `don_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       name: name.trim(),
-      email: email.trim().toLowerCase(),
+      email: (email || '').trim().toLowerCase(),
       phone: (phone || '').trim(),
       amount: Number(amount),
       purpose: purpose || 'General NGO Support',
       paymentMethod: paymentMethod || 'Manual Entry',
       transactionRef: transactionRef || `TXN${Date.now()}`,
       status: 'SUCCESS',
+      claim80g: Boolean(claim80g),
+      panNumber: (panNumber || '').trim().toUpperCase(),
+      address: (address || '').trim(),
+      frequency: frequency || 'one-time',
       date: new Date().toISOString()
     };
 
-    saveDonation(donationRecord);
-    return res.json({ success: true, donation: donationRecord, message: 'Donation transaction recorded successfully.' });
+    const saved = db.saveDonation(donationRecord);
+    return res.json({ success: true, donation: saved, message: 'Donation transaction recorded successfully.' });
   } catch (err) {
     console.error('Failed to record donation:', err);
     return res.status(500).json({ success: false, message: 'Failed to record donation.' });
@@ -1512,20 +1436,22 @@ app.post('/api/donations/record', requireAuth, (req, res) => {
 // Admin endpoint to get all donation records
 app.get('/api/donations', requireAuth, (req, res) => {
   try {
-    let list = [];
-    if (fs.existsSync(DONATIONS_FILE)) {
-      try {
-        list = JSON.parse(fs.readFileSync(DONATIONS_FILE, 'utf-8'));
-        if (!Array.isArray(list)) list = [];
-      } catch (e) {
-        list = [];
-      }
-    }
-    list.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const list = db.getDonations(req.query);
     return res.json({ success: true, donations: list });
   } catch (err) {
     console.error('Failed to fetch donations:', err);
     return res.status(500).json({ success: false, message: 'Failed to retrieve donation records.' });
+  }
+});
+
+// Admin endpoint for donation analytics summary
+app.get('/api/donations/stats', requireAuth, (req, res) => {
+  try {
+    const stats = db.getDonationStats();
+    return res.json({ success: true, stats });
+  } catch (err) {
+    console.error('Failed to compute donation stats:', err);
+    return res.status(500).json({ success: false, message: 'Failed to compute donation statistics.' });
   }
 });
 
@@ -1537,18 +1463,10 @@ app.delete('/api/donations/:id', requireAuth, (req, res) => {
   }
 
   try {
-    let list = [];
-    if (fs.existsSync(DONATIONS_FILE)) {
-      try {
-        list = JSON.parse(fs.readFileSync(DONATIONS_FILE, 'utf-8'));
-        if (!Array.isArray(list)) list = [];
-      } catch (e) {
-        list = [];
-      }
+    const deleted = db.deleteDonation(id);
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Donation record not found.' });
     }
-
-    const filtered = list.filter((item) => item.id !== id);
-    fs.writeFileSync(DONATIONS_FILE, JSON.stringify(filtered, null, 2), 'utf-8');
     return res.json({ success: true, message: 'Donation record deleted successfully.' });
   } catch (err) {
     console.error('Failed to delete donation record:', err);
@@ -1728,20 +1646,13 @@ const handleVerifyPayment = async (req, res) => {
     }
   }
 
-  let existingDonations = [];
-  if (fs.existsSync(DONATIONS_FILE)) {
-    try {
-      existingDonations = JSON.parse(fs.readFileSync(DONATIONS_FILE, 'utf-8'));
-      if (!Array.isArray(existingDonations)) existingDonations = [];
-    } catch (e) {}
-  }
-  const existingRecord = existingDonations.find(d => d.transactionRef === razorpay_payment_id);
+  const existingRecord = db.getDonationByTransactionRef(razorpay_payment_id);
   if (existingRecord) {
     return res.json({ success: true, donation: existingRecord, message: 'Payment already verified & logged.' });
   }
 
+  const { claim80g, panNumber, address, frequency } = req.body;
   const donationRecord = {
-    id: `don_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
     name: name.trim(),
     email: (email || '').trim().toLowerCase(),
     phone: (phone || '').trim(),
@@ -1750,11 +1661,53 @@ const handleVerifyPayment = async (req, res) => {
     paymentMethod: 'Razorpay',
     transactionRef: razorpay_payment_id,
     status: 'SUCCESS',
+    claim80g: Boolean(claim80g),
+    panNumber: (panNumber || '').trim().toUpperCase(),
+    address: (address || '').trim(),
+    frequency: frequency || 'one-time',
     date: new Date().toISOString()
   };
 
-  saveDonation(donationRecord);
-  return res.json({ success: true, donation: donationRecord, message: 'Razorpay payment verified & donation logged.' });
+  const savedDonation = db.saveDonation(donationRecord);
+
+  // Auto-dispatch 80G tax receipt via email if SMTP is configured and donor provided email
+  if (donationRecord.email) {
+    (async () => {
+      try {
+        const contactPath = path.join(SHARED_DATA_DIR, 'contact.json');
+        if (fs.existsSync(contactPath)) {
+          const contactData = JSON.parse(fs.readFileSync(contactPath, 'utf-8'));
+          const fsSettings = contactData.formSettings || {};
+          if (fsSettings.smtpEnabled && fsSettings.smtpHost && fsSettings.smtpUser && fsSettings.smtpPass) {
+            let settings = {};
+            const settingsPath = path.join(SHARED_DATA_DIR, 'settings.json');
+            if (fs.existsSync(settingsPath)) {
+              try { settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')); } catch (e) {}
+            }
+            const pdfBuffer = await generate80GReceiptPDF(savedDonation, settings.general || {});
+            await sendSMTPEmail({
+              to: donationRecord.email,
+              subject: `Official 80G Donation Receipt - Lakshya NGO (${savedDonation.receiptNumber})`,
+              text: `Dear ${savedDonation.name},\n\nThank you for your generous contribution of ₹${savedDonation.amount} towards ${savedDonation.purpose}.\n\nYour 80G Tax Exemption Certificate is attached with this email.\n\nWarm regards,\nLakshya Society`,
+              html: `<p>Dear <strong>${savedDonation.name}</strong>,</p><p>Thank you for your contribution of <strong>₹${savedDonation.amount}</strong> towards <em>${savedDonation.purpose}</em>.</p><p>Your Section 80G Tax Exemption Certificate (${savedDonation.receiptNumber}) is attached to this email.</p><p>Warm regards,<br><strong>Lakshya Society India</strong></p>`,
+              smtpConfig: fsSettings,
+              attachments: [
+                {
+                  filename: `80G-Receipt-${savedDonation.receiptNumber?.replace(/[\/\\:]/g, '_') || savedDonation.id}.pdf`,
+                  content: pdfBuffer
+                }
+              ]
+            });
+            console.log(`[EMAIL] 80G receipt dispatched to ${donationRecord.email}`);
+          }
+        }
+      } catch (mailErr) {
+        console.warn('[EMAIL WARN] Could not send receipt email:', mailErr.message);
+      }
+    })();
+  }
+
+  return res.json({ success: true, donation: savedDonation, message: 'Razorpay payment verified & donation logged.' });
 };
 
 // Mount route handlers directly
@@ -1763,6 +1716,79 @@ app.post('/api/create-order', donationLimiter, handleCreateOrder);
 
 app.post('/api/donations/razorpay/verify', donationLimiter, handleVerifyPayment);
 app.post('/api/verify-payment', donationLimiter, handleVerifyPayment);
+
+// --- 80G PDF Receipt Download Endpoint ---
+app.get('/api/donations/:id/receipt', async (req, res) => {
+  const { id } = req.params;
+  const donation = db.getDonationById(id) || db.getDonationByTransactionRef(id);
+  if (!donation) {
+    return res.status(404).json({ success: false, message: 'Donation record not found.' });
+  }
+
+  let settings = {};
+  const settingsFile = path.join(SHARED_DATA_DIR, 'settings.json');
+  if (fs.existsSync(settingsFile)) {
+    try { settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8')); } catch (e) {}
+  }
+
+  try {
+    const pdfBuffer = await generate80GReceiptPDF(donation, settings.general || {});
+    res.setHeader('Content-Type', 'application/pdf');
+    const safeFilename = `80G-Receipt-${(donation.receiptNumber || donation.id).replace(/[\/\\:]/g, '_')}.pdf`;
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error('Failed generating 80G receipt PDF:', err);
+    return res.status(500).json({ success: false, message: 'Failed to generate 80G tax receipt.' });
+  }
+});
+
+// --- Razorpay Asynchronous Webhook Endpoint ---
+app.post('/api/donations/razorpay/webhook', async (req, res) => {
+  const signature = req.headers['x-razorpay-signature'];
+  let donateData = {};
+  const donateFile = path.join(SHARED_DATA_DIR, 'donate.json');
+  if (fs.existsSync(donateFile)) {
+    try { donateData = JSON.parse(fs.readFileSync(donateFile, 'utf-8')); } catch (e) {}
+  }
+
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || donateData?.settings?.paymentGateways?.razorpay?.webhookSecret || '';
+  if (webhookSecret && signature) {
+    const expected = crypto.createHmac('sha256', webhookSecret).update(JSON.stringify(req.body)).digest('hex');
+    if (!safeCompare(expected, signature)) {
+      console.warn('[SECURITY WARN] Invalid Razorpay webhook signature from IP:', req.ip);
+      return res.status(400).json({ success: false, message: 'Invalid webhook signature.' });
+    }
+  }
+
+  const event = req.body?.event;
+  if (event === 'payment.captured') {
+    const payment = req.body.payload?.payment?.entity;
+    if (payment) {
+      const amountINR = Math.round(Number(payment.amount) / 100);
+      const notes = payment.notes || {};
+      const donationRecord = {
+        name: notes.name || notes.donor_name || payment.notes?.name || 'Online Supporter',
+        email: payment.email || notes.email || '',
+        phone: payment.contact || notes.phone || '',
+        amount: amountINR,
+        purpose: notes.purpose || 'General NGO Support',
+        paymentMethod: payment.method || 'Razorpay',
+        transactionRef: payment.id,
+        status: 'SUCCESS',
+        claim80g: Boolean(notes.claim80g === 'true' || notes.claim80g === true),
+        panNumber: notes.panNumber || '',
+        address: notes.address || '',
+        frequency: notes.frequency || 'one-time',
+        date: new Date(payment.created_at * 1000).toISOString()
+      };
+      db.saveDonation(donationRecord);
+      console.log(`[RAZORPAY WEBHOOK] Recorded payment ${payment.id} for ₹${amountINR}`);
+    }
+  }
+
+  return res.status(200).json({ status: 'ok' });
+});
 
 // Public unsubscribe endpoint (returns confirmation HTML page)
 app.get('/api/newsletter/unsubscribe', (req, res) => {

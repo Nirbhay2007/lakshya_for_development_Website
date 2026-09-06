@@ -22,6 +22,7 @@ export const useAdminStore = create((set, get) => ({
   lastActivity: null,
   pinHash: null, // Stored in memory after successful login — used for API auth header
   token: null, // JWT Bearer session token
+  role: localStorage.getItem('lakshya_cms_role') || 'superadmin',
   
   // Sections statuses: live / draft
   // draftFlags is an object where keys are section names and values are boolean (true = draft, false = live)
@@ -75,6 +76,8 @@ export const useAdminStore = create((set, get) => ({
       const result = await response.json();
 
       if (result.success) {
+        const userRole = result.role || 'superadmin';
+        localStorage.setItem('lakshya_cms_role', userRole);
         set({
           isAuthenticated: true,
           wrongAttempts: 0,
@@ -83,10 +86,11 @@ export const useAdminStore = create((set, get) => ({
           isDefaultPin: result.isDefaultPin,
           pinHash: result.pinHash,
           token: result.token || null,
+          role: userRole,
           isDefaultSecurityKey: result.isDefaultSecurityKey || false
         });
         await get().fetchLogs();
-        await get().logActivity('Security', 'Auth', 'Authorized access: user signed in using PIN authentication');
+        await get().logActivity('Security', 'Auth', `Authorized access: user signed in with ${userRole.toUpperCase()} role`);
         return { success: true };
       } else {
         set({
@@ -106,7 +110,8 @@ export const useAdminStore = create((set, get) => ({
   },
 
   logout: () => {
-    set({ isAuthenticated: false, lastActivity: null, pinHash: null, token: null, securityKeyHash: null, isDefaultSecurityKey: false });
+    localStorage.removeItem('lakshya_cms_role');
+    set({ isAuthenticated: false, lastActivity: null, pinHash: null, token: null, role: 'superadmin', securityKeyHash: null, isDefaultSecurityKey: false });
   },
 
   lockSecurity: () => {
