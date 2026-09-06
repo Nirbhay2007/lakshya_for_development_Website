@@ -163,7 +163,59 @@ export default function Donations() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `Lakshya_Form10BD_Donations_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `Lakshya_Donations_Ledger_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+  };
+
+  const exportOfficialForm10BD = () => {
+    const eligibleDonations = filtered.filter(d => d.claim80g || d.panNumber);
+    if (eligibleDonations.length === 0) {
+      alert('No 80G tax-exempt donations found matching the current filter for Form 10BD.');
+      return;
+    }
+
+    const safeCell = (str) => `"${String(str ?? '').replace(/"/g, '""')}"`;
+
+    // Exact 12-column schema required by Income Tax Department e-filing portal
+    const headers = [
+      'Sl. No.',
+      'Pre-acknowledgement No.',
+      'ID Code',
+      'Unique Identification Number',
+      'Section Code',
+      'Unique Registration Number (URN)',
+      'Date of Issuance of URN',
+      'Name of Donor',
+      'Address of Donor',
+      'Donation Type',
+      'Mode of Receipt',
+      'Amount of Donation (INR)'
+    ];
+
+    const rows = eligibleDonations.map((d, index) => [
+      index + 1,
+      '""', // Pre-acknowledgement No. (blank for standard direct donations)
+      d.panNumber ? 1 : '""', // ID Code: 1 for PAN
+      safeCell(d.panNumber || 'PAN NOT PROVIDED'),
+      safeCell('Section 80G'),
+      safeCell('AABTL0123EF20214'),
+      safeCell('2021-09-24'),
+      safeCell(d.name),
+      safeCell(d.address || 'Address on record'),
+      safeCell(d.purpose?.toLowerCase().includes('corpus') ? 'Corpus' : 'Others'),
+      safeCell('Electronic modes including account payee cheque/draft or electronic clearing system'),
+      Number(d.amount) || 0
+    ]);
+
+    const csvContent = [headers.map(safeCell).join(','), ...rows.map((e) => e.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Lakshya_Form10BD_Govt_ITD_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -178,13 +230,24 @@ export default function Donations() {
         title="Donations & 80G Receipts"
         description="Review all verified contributions, monitor financial growth, and download official 80G tax exemption receipts."
         actions={
-          <button
-            onClick={exportToCSV}
-            className="admin-btn-secondary flex items-center gap-2 py-2 px-3 text-xs font-semibold cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export CSV (Form 10BD)</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportOfficialForm10BD}
+              className="admin-btn-primary flex items-center gap-1.5 py-2 px-3 text-xs font-semibold cursor-pointer shadow-sm"
+              title="Official 12-Column CSV format ready for upload on incometax.gov.in e-filing portal"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export Form 10BD (Govt ITD)</span>
+            </button>
+            <button
+              onClick={exportToCSV}
+              className="admin-btn-secondary flex items-center gap-1.5 py-2 px-3 text-xs font-semibold cursor-pointer"
+              title="Export complete financial transaction ledger"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Full Ledger</span>
+            </button>
+          </div>
         }
       />
 

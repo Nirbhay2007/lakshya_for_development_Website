@@ -192,6 +192,11 @@ const Footer = () => {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link to="/tax-receipts" className="text-cream/70 text-sm hover:text-forest-400 transition-colors">
+                80G Tax Receipts
+              </Link>
+            </li>
           </ul>
         </div>
 

@@ -74,6 +74,29 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_revisions_section ON revisions(section, timestamp DESC);
+
+  CREATE TABLE IF NOT EXISTS broadcasts (
+    id TEXT PRIMARY KEY,
+    subject TEXT NOT NULL,
+    pdfUrl TEXT,
+    targetFilter TEXT DEFAULT 'all',
+    recipientCount INTEGER DEFAULT 0,
+    openCount INTEGER DEFAULT 0,
+    sentAt TEXT NOT NULL,
+    createdAt INTEGER DEFAULT (strftime('%s', 'now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_broadcasts_sentAt ON broadcasts(sentAt DESC);
+
+  CREATE TABLE IF NOT EXISTS broadcast_opens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    broadcastId TEXT NOT NULL,
+    email TEXT NOT NULL,
+    openedAt TEXT NOT NULL,
+    UNIQUE(broadcastId, email)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_broadcast_opens_bid ON broadcast_opens(broadcastId);
 `);
 
 // --- Automated Migration from Legacy JSON Files ---
@@ -522,6 +545,90 @@ function restoreDatabaseFromFile(incomingDbPath) {
   }
 }
 
+function lookupDonationsByDonor(rawIdentifier) {
+  if (!rawIdentifier || typeof rawIdentifier !== 'string') return [];
+  const trimmed = rawIdentifier.trim();
+  if (trimmed.length < 3) return [];
+
+  const isEmail = trimmed.includes('@');
+  const digitsOnly = trimmed.replace(/\D/g, '');
+  const isPan = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(trimmed);
+
+  let query = 'SELECT * FROM donations WHERE 1=0';
+  const params = [];
+
+  if (isPan) {
+    query += ' OR UPPER(panNumber) = UPPER(?)';
+    params.push(trimmed.toUpperCase());
+  }
+  if (isEmail) {
+    query += ' OR LOWER(email) = LOWER(?)';
+    params.push(trimmed.toLowerCase());
+  }
+  if (digitsOnly.length >= 7) {
+    const lastDigits = digitsOnly.slice(-10);
+    query += " OR REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), '(', '') LIKE ?";
+    params.push(`%${lastDigits}%`);
+  }
+
+  // Also match transactionRef or receiptNumber directly
+  query += ' OR transactionRef = ? OR receiptNumber = ? OR id = ?';
+  params.push(trimmed, trimmed, trimmed);
+
+  query += ' ORDER BY date DESC LIMIT 50';
+
+  const rows = db.prepare(query).all(...params);
+  return rows.map(r => ({
+    ...r,
+    claim80g: Boolean(r.claim80g)
+  }));
+}
+
+function saveBroadcast(data) {
+  const id = data.id || `bc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const stmt = db.prepare(`
+    INSERT INTO broadcasts (id, subject, pdfUrl, targetFilter, recipientCount, openCount, sentAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  stmt.run(
+    id,
+    data.subject || 'Newsletter Broadcast',
+    data.pdfUrl || '',
+    data.targetFilter || 'all',
+    Number(data.recipientCount) || 0,
+    Number(data.openCount) || 0,
+    data.sentAt || new Date().toISOString()
+  );
+  return { id, ...data };
+}
+
+function getBroadcasts(limit = 20) {
+  const rows = db.prepare('SELECT * FROM broadcasts ORDER BY sentAt DESC LIMIT ?').all(limit);
+  return rows.map(r => ({
+    ...r,
+    openRate: r.recipientCount > 0 ? Math.round((r.openCount / r.recipientCount) * 100) : 0
+  }));
+}
+
+function recordBroadcastOpen(broadcastId, email) {
+  if (!broadcastId || !email) return false;
+  const normalizedEmail = email.trim().toLowerCase();
+  try {
+    const stmt = db.prepare(`
+      INSERT OR IGNORE INTO broadcast_opens (broadcastId, email, openedAt)
+      VALUES (?, ?, ?)
+    `);
+    const info = stmt.run(broadcastId, normalizedEmail, new Date().toISOString());
+    if (info.changes > 0) {
+      db.prepare('UPDATE broadcasts SET openCount = openCount + 1 WHERE id = ?').run(broadcastId);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
 module.exports = {
   get db() { return db; },
   backupDatabase,
@@ -529,6 +636,7 @@ module.exports = {
   getDonations,
   getDonationById,
   getDonationByTransactionRef,
+  lookupDonationsByDonor,
   saveDonation,
   deleteDonation,
   getDonationStats,
@@ -542,5 +650,8 @@ module.exports = {
   removeSubscriber,
   saveRevision,
   getRevisions,
-  getRevisionById
+  getRevisionById,
+  saveBroadcast,
+  getBroadcasts,
+  recordBroadcastOpen
 };

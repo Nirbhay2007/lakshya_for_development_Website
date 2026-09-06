@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { History, RotateCcw, Trash2, Plus, AlertTriangle, Clock, ShieldCheck } from 'lucide-react';
+import { History, RotateCcw, Trash2, Plus, AlertTriangle, Clock, ShieldCheck, Download } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
 import { useAdminStore } from '../store/useAdminStore';
 import SecurityLockPanel from '../components/ui/SecurityLockPanel';
@@ -73,6 +73,33 @@ export default function Backups() {
       });
       fetchBackups();
     } catch {}
+  };
+
+  const downloadBackup = async (id) => {
+    try {
+      const res = await fetch(`/api/backups/download/${id}`, {
+        headers: { 
+          'x-cms-pin-hash': pinHash,
+          'x-cms-security-key-hash': securityKeyHash || ''
+        }
+      });
+      if (!res.ok) {
+        alert('Failed to download backup archive.');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = id;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 100);
+    } catch (err) {
+      console.error(err);
+      alert('Error downloading backup archive.');
+    }
   };
 
   const restoreBackup = async (id) => {
@@ -201,7 +228,14 @@ export default function Backups() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/10">
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/10">
+                    <button
+                      onClick={() => downloadBackup(backup.id)}
+                      className="p-2 bg-white/5 hover:bg-white/15 text-admin-text hover:text-white rounded-xl transition-colors cursor-pointer"
+                      title="Download Backup ZIP Archive"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => restoreBackup(backup.id)}
                       className="flex-1 flex justify-center items-center gap-2 py-2 bg-admin-accent/10 hover:bg-admin-accent hover:text-white text-admin-accent rounded-xl text-sm font-medium transition-colors"

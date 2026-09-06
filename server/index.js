@@ -958,6 +958,28 @@ app.delete('/api/backups/:id', requireAuth, requireSecurityAuth, (req, res) => {
   }
 });
 
+// Download a backup archive (requires Superadmin + Security Auth)
+app.get('/api/backups/download/:id', requireAuth, requireSecurityAuth, (req, res) => {
+  try {
+    const backupId = req.params.id;
+    if (backupId.includes('..') || backupId.includes('/') || backupId.includes('\\')) {
+      return res.status(400).json({ success: false, message: 'Invalid backup ID.' });
+    }
+
+    const backupPath = path.join(BACKUPS_DIR, backupId);
+    if (!fs.existsSync(backupPath)) {
+      return res.status(404).json({ success: false, message: 'Backup file not found.' });
+    }
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${backupId}"`);
+    return res.sendFile(backupPath);
+  } catch (err) {
+    console.error('Failed to download backup:', err);
+    return res.status(500).json({ success: false, message: 'Failed to download backup.' });
+  }
+});
+
 // Bulk read all CMS sections (public)
 app.get('/api/cms', (req, res) => {
   const isAdmin = isAdminRequest(req);
@@ -1512,6 +1534,57 @@ app.delete('/api/donations/:id', requireAuth, (req, res) => {
   } catch (err) {
     console.error('Failed to delete donation record:', err);
     return res.status(500).json({ success: false, message: 'Failed to delete donation record.' });
+  }
+});
+
+// Public Rate-Limited Donor Self-Service Lookup Endpoint
+// Allows donors to query past donations and retrieve official 80G receipts
+app.post('/api/donations/lookup', publicFormLimiter, (req, res) => {
+  const { identifier } = req.body;
+  if (!identifier || typeof identifier !== 'string') {
+    return res.status(400).json({ success: false, message: 'Please enter a valid Phone Number, Email, or PAN.' });
+  }
+
+  const clean = identifier.trim();
+  if (clean.length < 3) {
+    return res.status(400).json({ success: false, message: 'Search query is too short. Please provide at least 3 characters.' });
+  }
+
+  try {
+    const records = db.lookupDonationsByDonor(clean);
+
+    if (!records || records.length === 0) {
+      return res.json({
+        success: true,
+        donations: [],
+        message: 'No donation records found matching that Phone, PAN, or Email. If you donated recently or via direct bank transfer, please contact our team.'
+      });
+    }
+
+    // Return sanitized donor records with receipt download links
+    const sanitized = records.map(r => ({
+      id: r.id,
+      receiptNumber: r.receiptNumber || `LAKSHYA-${r.id.slice(0, 8).toUpperCase()}`,
+      donorName: r.name,
+      amount: r.amount,
+      date: r.date,
+      purpose: r.purpose,
+      paymentMethod: r.paymentMethod,
+      claim80g: Boolean(r.claim80g),
+      panNumber: r.panNumber ? `${r.panNumber.slice(0, 3)}****${r.panNumber.slice(-2)}` : null,
+      status: r.status,
+      receiptUrl: `/api/donations/${r.id}/receipt`,
+      verifyUrl: `/api/donations/${r.id}/verify`
+    }));
+
+    return res.json({
+      success: true,
+      donations: sanitized,
+      count: sanitized.length
+    });
+  } catch (err) {
+    console.error('Donor lookup error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to look up donation records.' });
   }
 });
 
@@ -2100,28 +2173,34 @@ app.post('/api/donations/razorpay/webhook', async (req, res) => {
   }
 
   const event = req.body?.event;
-  if (event === 'payment.captured') {
+  if (event === 'payment.captured' || event === 'subscription.charged') {
     const payment = req.body.payload?.payment?.entity;
+    const subscription = req.body.payload?.subscription?.entity;
     if (payment) {
       const amountINR = Math.round(Number(payment.amount) / 100);
-      const notes = payment.notes || {};
+      const notes = payment.notes || subscription?.notes || {};
       const donationRecord = {
         name: notes.name || notes.donor_name || payment.notes?.name || 'Online Supporter',
         email: payment.email || notes.email || '',
         phone: payment.contact || notes.phone || '',
         amount: amountINR,
-        purpose: notes.purpose || 'General NGO Support',
+        purpose: notes.purpose || (event === 'subscription.charged' ? 'Monthly Sponsorship' : 'General NGO Support'),
         paymentMethod: payment.method || 'Razorpay',
         transactionRef: payment.id,
         status: 'SUCCESS',
         claim80g: Boolean(notes.claim80g === 'true' || notes.claim80g === true),
         panNumber: notes.panNumber || '',
         address: notes.address || '',
-        frequency: notes.frequency || 'one-time',
+        frequency: event === 'subscription.charged' ? 'monthly' : (notes.frequency || 'one-time'),
         date: new Date(payment.created_at * 1000).toISOString()
       };
       db.saveDonation(donationRecord);
-      console.log(`[RAZORPAY WEBHOOK] Recorded payment ${payment.id} for ₹${amountINR}`);
+      console.log(`[RAZORPAY WEBHOOK] Recorded ${event} ${payment.id} for ₹${amountINR}`);
+    }
+  } else if (event === 'payment.failed') {
+    const payment = req.body.payload?.payment?.entity;
+    if (payment) {
+      console.warn(`[RAZORPAY PAYMENT FAILED] Payment ${payment.id} failed:`, payment.error_description || payment.error_reason);
     }
   }
 
@@ -2469,17 +2548,19 @@ app.post('/api/newsletter/broadcast', requireAuth, async (req, res) => {
 
     const host = req.headers.host || '80.225.201.147:3000';
     const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
+    const broadcastId = `bc_${Date.now()}`;
 
     // Send emails in sequence to be safe with SMTP servers
     for (const sub of targetRecipients) {
       try {
         const unsubscribeUrl = `${protocol}://${host}/api/newsletter/unsubscribe?email=${encodeURIComponent(sub.email)}`;
+        const trackPixelUrl = `${protocol}://${host}/api/newsletter/track/open/${broadcastId}/${encodeURIComponent(sub.email)}`;
         
         await sendSMTPEmail({
           to: sub.email,
           subject,
           text: `Hello,\n\nPlease find attached our latest newsletter PDF document.\n\n---\nTo unsubscribe from these updates, please click: ${unsubscribeUrl}`,
-          html: `<p>Hello,</p><p>Please find attached our latest newsletter PDF document.</p><br><hr><p style="font-size:11px;color:#777;">To unsubscribe from these emails, <a href="${unsubscribeUrl}">click here</a>.</p>`,
+          html: `<p>Hello,</p><p>Please find attached our latest newsletter PDF document.</p><br><hr><p style="font-size:11px;color:#777;">To unsubscribe from these emails, <a href="${unsubscribeUrl}">click here</a>.</p><img src="${trackPixelUrl}" width="1" height="1" style="display:none;" alt="" />`,
           attachments: [
             {
               filename: pdfFilename,
@@ -2496,15 +2577,59 @@ app.post('/api/newsletter/broadcast', requireAuth, async (req, res) => {
       }
     }
 
+    // Save broadcast analytics entry
+    try {
+      db.saveBroadcast({
+        id: broadcastId,
+        subject,
+        pdfUrl,
+        targetFilter: targetFilter || 'all',
+        recipientCount: sentCount,
+        openCount: 0,
+        sentAt: new Date().toISOString()
+      });
+    } catch (bcErr) {
+      console.error('Failed to log broadcast analytics:', bcErr.message);
+    }
+
     return res.json({
       success: true,
       message: `Broadcast finished. Successfully sent to ${sentCount} subscribers.${failedCount > 0 ? ` Failed to send to ${failedCount} subscribers.` : ''}`,
       sentCount,
-      failedCount
+      failedCount,
+      broadcastId
     });
   } catch (err) {
     console.error('Newsletter broadcast failed:', err);
     return res.status(500).json({ success: false, message: err.message || 'Newsletter broadcast failed.' });
+  }
+});
+
+// Newsletter Broadcast Open Tracking Pixel
+app.get('/api/newsletter/track/open/:broadcastId/:email', (req, res) => {
+  const { broadcastId, email } = req.params;
+  try {
+    db.recordBroadcastOpen(broadcastId, email);
+  } catch (e) {}
+
+  // 1x1 transparent GIF
+  const pixel = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+  res.writeHead(200, {
+    'Content-Type': 'image/gif',
+    'Content-Length': pixel.length,
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private'
+  });
+  return res.end(pixel);
+});
+
+// Admin endpoint to list broadcast history and analytics
+app.get('/api/newsletter/broadcasts', requireAuth, (req, res) => {
+  try {
+    const list = db.getBroadcasts(30);
+    return res.json({ success: true, broadcasts: list });
+  } catch (err) {
+    console.error('Failed to fetch broadcasts:', err);
+    return res.status(500).json({ success: false, message: 'Failed to retrieve broadcast history.' });
   }
 });
 

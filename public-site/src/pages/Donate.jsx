@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Heart, BookOpen, Leaf, Check, Info, Activity, Sparkles, X, ShieldCheck, CheckCircle2, ExternalLink, MessageCircle, AlertTriangle, RefreshCw, Download, Copy, QrCode, Landmark } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
@@ -707,6 +708,16 @@ const Donate = () => {
                         <span>Proceed to Support</span>
                       )}
                     </Button>
+                  </div>
+
+                  {/* Self-service Tax Receipt Link */}
+                  <div className="pt-2 text-center">
+                    <p className="text-xs text-charcoal/60 font-sans">
+                      Already donated?{' '}
+                      <Link to="/tax-receipts" className="text-forest-600 hover:text-forest-700 font-bold underline">
+                        Download past 80G Tax Receipts &rarr;
+                      </Link>
+                    </p>
                   </div>
 
                 </form>

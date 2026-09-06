@@ -28,6 +28,7 @@ const Donate = safeLazy(() => import('./pages/Donate'));
 const Career = safeLazy(() => import('./pages/Career'));
 const NotFound = safeLazy(() => import('./pages/NotFound'));
 const Legal = safeLazy(() => import('./pages/Legal'));
+const TaxReceipts = safeLazy(() => import('./pages/TaxReceipts'));
 
 // Scroll restoration helper
 function ScrollToTop() {
@@ -137,6 +138,8 @@ function AnimatedRoutes() {
           <Route path="/contact" element={renderRoute('/contact', <Contact />, true)} />
           <Route path="/donate" element={renderRoute('/donate', <Donate />)} />
           <Route path="/career" element={renderRoute('/career', <Career />, true)} />
+          <Route path="/tax-receipts" element={renderRoute('/tax-receipts', <TaxReceipts />)} />
+          <Route path="/receipt-lookup" element={renderRoute('/tax-receipts', <TaxReceipts />)} />
           <Route path="/privacy-policy" element={renderRoute('/privacy-policy', <Legal type="privacyPolicy" />)} />
           <Route path="/terms-conditions" element={renderRoute('/terms-conditions', <Legal type="termsConditions" />)} />
           <Route path="/refund-policy" element={renderRoute('/refund-policy', <Legal type="refundPolicy" />)} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Search, Download, Trash2, Users, FileSpreadsheet, Send, Upload, Tag, Filter } from 'lucide-react';
+import { Mail, Search, Download, Trash2, Users, FileSpreadsheet, Send, Upload, Tag, Filter, BarChart3, Eye } from 'lucide-react';
 import PageHeader from '../components/layout/PageHeader';
 import { useAdminStore } from '../store/useAdminStore';
 import CMSInput from '../components/ui/CMSInput';
@@ -18,6 +18,7 @@ export default function Newsletter() {
   const [uploadedPdfUrl, setUploadedPdfUrl] = useState('');
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcasts, setBroadcasts] = useState([]);
   
   const pinHash = useAdminStore((state) => state.pinHash);
 
@@ -61,8 +62,25 @@ export default function Newsletter() {
     }
   };
 
+  const fetchBroadcasts = async () => {
+    try {
+      const res = await fetch('/api/newsletter/broadcasts', {
+        headers: {
+          'x-cms-pin-hash': pinHash || '',
+        },
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.broadcasts)) {
+        setBroadcasts(data.broadcasts);
+      }
+    } catch (err) {
+      console.error('Failed to load broadcasts:', err);
+    }
+  };
+
   useEffect(() => {
     fetchSubscribers();
+    fetchBroadcasts();
   }, [pinHash]);
 
   // Derive all unique subscriber types and merge with donation preset titles
@@ -158,6 +176,7 @@ export default function Newsletter() {
         setBroadcastSubject('');
         setPdfFile(null);
         setUploadedPdfUrl('');
+        fetchBroadcasts();
       } else {
         alert(result.message || 'Failed to dispatch newsletter broadcast.');
       }
@@ -495,6 +514,67 @@ export default function Newsletter() {
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Broadcast Analytics & History Card */}
+        <div className="glass-panel rounded-2xl p-6 border border-white/5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-forest-500/10 text-forest-400 border border-forest-500/20">
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-display font-semibold text-admin-text text-base">Broadcast Campaign Analytics</h3>
+                <p className="text-xs text-admin-muted">Real-time open rates tracked via embedded digital verification pixel</p>
+              </div>
+            </div>
+            <span className="text-xs font-mono bg-white/5 px-2.5 py-1 rounded-lg text-admin-muted border border-white/5">
+              {broadcasts.length} Dispatches Recorded
+            </span>
+          </div>
+
+          {broadcasts.length === 0 ? (
+            <div className="text-center py-8 text-admin-muted text-xs border border-dashed border-white/10 rounded-xl">
+              No newsletter broadcasts have been dispatched yet. Dispatched campaigns will report opens and engagement here automatically.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-sans border-collapse">
+                <thead>
+                  <tr className="border-b border-admin-border text-admin-muted uppercase tracking-wider">
+                    <th className="py-3 px-3 font-semibold">Subject</th>
+                    <th className="py-3 px-3 font-semibold">Audience</th>
+                    <th className="py-3 px-3 font-semibold">Sent At</th>
+                    <th className="py-3 px-3 font-semibold">Recipients</th>
+                    <th className="py-3 px-3 font-semibold">Unique Opens</th>
+                    <th className="py-3 px-3 font-semibold text-right">Open Rate</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {broadcasts.map((bc) => (
+                    <tr key={bc.id} className="hover:bg-white/[0.01] transition-colors">
+                      <td className="py-3.5 px-3 font-medium text-admin-text max-w-xs truncate">{bc.subject}</td>
+                      <td className="py-3.5 px-3">
+                        <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium bg-admin-accent/10 text-admin-accent-hi border border-admin-accent/20">
+                          {bc.targetFilter === 'all' ? 'All Subscribers' : bc.targetFilter}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-3 text-admin-muted">
+                        {new Date(bc.sentAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                      </td>
+                      <td className="py-3.5 px-3 font-mono font-medium text-admin-text">{bc.recipientCount}</td>
+                      <td className="py-3.5 px-3 font-mono font-medium text-forest-400">{bc.openCount}</td>
+                      <td className="py-3.5 px-3 text-right">
+                        <span className="font-mono font-bold text-admin-accent-hi bg-admin-accent/10 px-2 py-0.5 rounded-md border border-admin-accent/20">
+                          {bc.openRate}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

@@ -229,4 +229,79 @@ describe('SQLite Embedded Database Store', () => {
     subs = db.getSubscribers();
     expect(subs.some(s => s.email === testEmail)).toBe(false);
   });
+
+  test('donor self-service lookup by PAN, Email, and Phone', () => {
+    const testId = 'don_lookup_' + Date.now();
+    const donation = {
+      id: testId,
+      receiptNumber: 'LAK/LOOKUP/' + Date.now(),
+      amount: 2500,
+      name: 'Rohan Gupta',
+      email: 'rohan.gupta@example.com',
+      phone: '+91 98765 43210',
+      panNumber: 'ABCDE9876F',
+      purpose: 'Education for All',
+      claim80g: 1,
+      paymentMethod: 'UPI',
+      date: new Date().toISOString()
+    };
+
+    db.saveDonation(donation);
+
+    // 1. Search by PAN
+    const byPan = db.lookupDonationsByDonor('ABCDE9876F');
+    expect(byPan.length).toBeGreaterThan(0);
+    expect(byPan.some(d => d.id === testId)).toBe(true);
+
+    // 2. Search by Email
+    const byEmail = db.lookupDonationsByDonor('rohan.gupta@example.com');
+    expect(byEmail.some(d => d.id === testId)).toBe(true);
+
+    // 3. Search by Phone (last 10 digits)
+    const byPhone = db.lookupDonationsByDonor('9876543210');
+    expect(byPhone.some(d => d.id === testId)).toBe(true);
+
+    // 4. Clean up
+    db.deleteDonation(testId);
+    const afterDelete = db.lookupDonationsByDonor('ABCDE9876F');
+    expect(afterDelete.some(d => d.id === testId)).toBe(false);
+  });
+
+  test('broadcast campaign analytics tracking and unique open metrics', () => {
+    const broadcastId = `bc_test_${Date.now()}`;
+    db.saveBroadcast({
+      id: broadcastId,
+      subject: 'Annual Activity Report',
+      pdfUrl: '/media/newsletter-test.pdf',
+      targetFilter: 'all',
+      recipientCount: 10,
+      openCount: 0,
+      sentAt: new Date().toISOString()
+    });
+
+    // Initial check
+    let list = db.getBroadcasts(10);
+    let item = list.find(b => b.id === broadcastId);
+    expect(item).toBeTruthy();
+    expect(item.openCount).toBe(0);
+    expect(item.openRate).toBe(0);
+
+    // Record unique open
+    const recorded1 = db.recordBroadcastOpen(broadcastId, 'donor1@example.com');
+    expect(recorded1).toBe(true);
+
+    // Duplicate open by same user should not increment count
+    const duplicate = db.recordBroadcastOpen(broadcastId, 'donor1@example.com');
+    expect(duplicate).toBe(false);
+
+    // Second unique user
+    const recorded2 = db.recordBroadcastOpen(broadcastId, 'donor2@example.com');
+    expect(recorded2).toBe(true);
+
+    // Check updated open rate (2 out of 10 = 20%)
+    list = db.getBroadcasts(10);
+    item = list.find(b => b.id === broadcastId);
+    expect(item.openCount).toBe(2);
+    expect(item.openRate).toBe(20);
+  });
 });
