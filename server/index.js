@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const sharp = require('sharp');
 const AdmZip = require('adm-zip');
-const { verifyPin, verifySecurityKey, changeSecurityKey, changePin, changeRolePin, getRolesStatus, requireAuth, requireRole, enforceNonDefaultCredentials, verifySecurityHeader, hashPIN, readAuth, writeAuth } = require('./auth');
+const { verifyPin, verifySecurityKey, changeSecurityKey, changePin, changeRolePin, getRolesStatus, checkPinCollision, requireAuth, requireRole, enforceNonDefaultCredentials, verifySecurityHeader, createSaltedHash, hashPIN, readAuth, writeAuth } = require('./auth');
 const nodemailer = require('nodemailer');
 const sanitizeHtml = require('sanitize-html');
 const db = require('./db');
@@ -376,11 +376,11 @@ app.get('/api/health', (req, res) => {
 // Auth routes
 app.post('/api/auth/verify', authLimiter, verifyPin);
 app.post('/api/auth/verify-security-key', authLimiter, verifySecurityKey);
-app.post('/api/auth/change-security-key', requireAuth, changeSecurityKey);
-app.post('/api/auth/change-pin', requireAuth, changePin);
+app.post('/api/auth/change-security-key', requireAuth, requireRole('superadmin'), changeSecurityKey);
+app.post('/api/auth/change-pin', requireAuth, requireRole('superadmin'), changePin);
 
 // Recovery Email Configuration Routes
-app.get('/api/auth/recovery-email', requireAuth, requireSecurityAuth, (req, res) => {
+app.get('/api/auth/recovery-email', requireAuth, requireRole('superadmin'), requireSecurityAuth, (req, res) => {
   try {
     const auth = readAuth();
     return res.json({ success: true, recoveryEmail: auth.recoveryEmail || '' });
@@ -389,7 +389,7 @@ app.get('/api/auth/recovery-email', requireAuth, requireSecurityAuth, (req, res)
   }
 });
 
-app.post('/api/auth/change-recovery-email', requireAuth, requireSecurityAuth, (req, res) => {
+app.post('/api/auth/change-recovery-email', requireAuth, requireRole('superadmin'), requireSecurityAuth, (req, res) => {
   const { recoveryEmail } = req.body;
   if (recoveryEmail === undefined || typeof recoveryEmail !== 'string') {
     return res.status(400).json({ success: false, message: 'Recovery email is required and must be a string.' });
@@ -500,19 +500,21 @@ app.post('/api/auth/reset-pin-confirm', authLimiter, (req, res) => {
   }
 
   try {
-    const authPath = path.join(__dirname, 'data', 'auth.json');
-    let auth = {};
-    if (fs.existsSync(authPath)) {
-      try {
-        auth = JSON.parse(fs.readFileSync(authPath, 'utf-8'));
-      } catch (e) { auth = {}; }
+    const auth = readAuth();
+
+    const collision = checkPinCollision(newPin, 'pinHash', auth);
+    if (collision) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot use this PIN: it conflicts with the ${collision}. All role passwords must be unique.`
+      });
     }
 
-    auth.pinHash = hashPIN(newPin);
+    auth.pinHash = createSaltedHash(newPin);
     auth.isDefault = false;
     auth.pinLockout = { attempts: 0, lockedUntil: null };
 
-    safeWriteFileSync(authPath, auth);
+    writeAuth(auth);
 
     pinResetCache = { code: null, expiresAt: null };
     return res.json({ success: true, message: 'Login PIN updated successfully. You can now log in.' });
@@ -617,7 +619,16 @@ app.post('/api/auth/reset-master-confirm', authLimiter, (req, res) => {
 
   try {
     const auth = readAuth();
-    auth.securityKeyHash = hashPIN(newMasterKey);
+
+    const collision = checkPinCollision(newMasterKey, 'securityKeyHash', auth);
+    if (collision) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot use this Master Key: it conflicts with the ${collision}. All system keys must be unique.`
+      });
+    }
+
+    auth.securityKeyHash = createSaltedHash(newMasterKey);
     auth.isDefaultSecurityKey = false;
     auth.securityKeyLockout = { attempts: 0, lockedUntil: null };
     writeAuth(auth);

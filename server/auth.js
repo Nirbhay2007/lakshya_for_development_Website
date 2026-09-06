@@ -207,12 +207,22 @@ function verifyPin(req, res) {
 
     const token = issueSessionToken(matchedRole);
 
+    let matchedHash = auth.pinHash;
+    let isDefaultForRole = auth.isDefault;
+    if (matchedRole === 'editor') {
+      matchedHash = auth.editorPinHash;
+      isDefaultForRole = auth.isDefaultEditor ?? verifyCredential(DEFAULT_EDITOR_PIN, auth.editorPinHash);
+    } else if (matchedRole === 'finance') {
+      matchedHash = auth.financePinHash;
+      isDefaultForRole = auth.isDefaultFinance ?? verifyCredential(DEFAULT_FINANCE_PIN, auth.financePinHash);
+    }
+
     return res.json({
       success: true,
       token,
       role: matchedRole,
-      pinHash: auth.pinHash,
-      isDefaultPin: auth.isDefault,
+      pinHash: matchedHash,
+      isDefaultPin: isDefaultForRole,
       isDefaultSecurityKey: auth.isDefaultSecurityKey
     });
   } else {
@@ -319,6 +329,10 @@ function changeSecurityKey(req, res) {
     return res.status(400).json({ success: false, message: 'New Security Key must be a 6-digit numeric string.' });
   }
 
+  if (req.user?.role && req.user.role !== 'superadmin') {
+    return res.status(403).json({ success: false, message: 'Only Super Administrators can modify the Master Security Key.' });
+  }
+
   const auth = readAuth();
   const authHeader = req.headers['authorization'] || req.headers['x-cms-security-key-hash'];
   
@@ -358,6 +372,10 @@ function changeSecurityKey(req, res) {
 /** POST /api/auth/change-pin — body: { newPin: "654321" } */
 function changePin(req, res) {
   const { newPin } = req.body;
+
+  if (req.user?.role && req.user.role !== 'superadmin') {
+    return res.status(403).json({ success: false, message: 'Only Super Administrators can modify the Super Admin PIN.' });
+  }
 
   if (!newPin || typeof newPin !== 'string' || newPin.length !== 6 || !/^\d{6}$/.test(newPin)) {
     return res.status(400).json({ success: false, message: 'New PIN must be a 6-digit numeric string.' });
@@ -411,6 +429,14 @@ function requireAuth(req, res, next) {
   const auth = readAuth();
   if (safeCompare(authHeader, auth.pinHash)) {
     req.user = { role: 'superadmin' };
+    return next();
+  }
+  if (auth.editorPinHash && safeCompare(authHeader, auth.editorPinHash)) {
+    req.user = { role: 'editor' };
+    return next();
+  }
+  if (auth.financePinHash && safeCompare(authHeader, auth.financePinHash)) {
+    req.user = { role: 'finance' };
     return next();
   }
 
@@ -490,14 +516,12 @@ function changeRolePin(req, res) {
   const auth = readAuth();
   const targetKey = role === 'editor' ? 'editorPinHash' : 'financePinHash';
 
-  if (!resetToDefault) {
-    const collision = checkPinCollision(newPin, targetKey, auth);
-    if (collision) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot assign this PIN: it conflicts with the ${collision}. Each portal role must have a distinct, unique PIN.`
-      });
-    }
+  const collision = checkPinCollision(newPin, targetKey, auth);
+  if (collision) {
+    return res.status(400).json({
+      success: false,
+      message: `Cannot assign this PIN: it conflicts with the ${collision}. Each portal role must have a distinct, unique PIN.`
+    });
   }
 
   const newHashed = createSaltedHash(newPin);
@@ -526,6 +550,7 @@ module.exports = {
   changePin,
   changeRolePin,
   getRolesStatus,
+  checkPinCollision,
   requireAuth,
   requireRole,
   enforceNonDefaultCredentials,
