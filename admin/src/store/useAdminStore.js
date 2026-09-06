@@ -203,6 +203,47 @@ export const useAdminStore = create((set, get) => ({
     }
   },
 
+  fetchRolesStatus: async () => {
+    const { token, pinHash } = get();
+    try {
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (pinHash) headers['x-cms-pin-hash'] = pinHash;
+
+      const res = await fetch('/api/auth/roles-status', { headers });
+      const data = await res.json();
+      if (data.success) {
+        return { success: true, roles: data.roles };
+      }
+      return { success: false, message: data.message };
+    } catch {
+      return { success: false, message: 'Server unavailable.' };
+    }
+  },
+
+  changeRolePin: async (role, newPin, resetToDefault = false) => {
+    const { token, pinHash } = get();
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (pinHash) headers['x-cms-pin-hash'] = pinHash;
+
+      const res = await fetch('/api/auth/change-role-pin', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ role, newPin, resetToDefault })
+      });
+      const data = await res.json();
+      if (data.success) {
+        get().logActivity('Security', 'Role Access', `${role.toUpperCase()} PIN was modified by Super Admin`);
+        return { success: true, message: data.message, isDefault: data.isDefault };
+      }
+      return { success: false, message: data.message };
+    } catch {
+      return { success: false, message: 'Server unavailable.' };
+    }
+  },
+
   updateActivity: () => {
     const { isAuthenticated, lastActivity } = get();
     if (!isAuthenticated) return;

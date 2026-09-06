@@ -66,7 +66,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         { name: 'Newsletter List', path: '/newsletter', icon: Mail, key: 'newsletter' },
         { name: 'Activity Log', path: '/activity', icon: FileSpreadsheet, key: 'activity' },
         { name: 'Backups', path: '/backups', icon: History, key: 'backups' },
-        { name: 'Security Settings', path: '/security', icon: Lock, key: 'security' }
+        { name: 'Security & Role Access', path: '/security', icon: Lock, key: 'security' }
       ]
     }
   ];

@@ -1,5 +1,26 @@
 [
   {
+    "id": "lqdzyeib5",
+    "timestamp": 1788670952193,
+    "action": "Security",
+    "section": "Master Key Change",
+    "description": "Master Security Key was updated"
+  },
+  {
+    "id": "m3iyi20yl",
+    "timestamp": 1788670897108,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in with SUPERADMIN role"
+  },
+  {
+    "id": "15m4nmlo2",
+    "timestamp": 1788670891704,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in with SUPERADMIN role"
+  },
+  {
     "id": "nt1laky5v",
     "timestamp": 1788667379652,
     "action": "Security",

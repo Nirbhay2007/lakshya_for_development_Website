@@ -60,6 +60,37 @@ describe('Role-Based Access Control (RBAC) Token Logic', () => {
     expect(decoded).toBeTruthy();
     expect(decoded.role).toBe('superadmin');
   });
+
+  test('returns roles status with editor and finance configurations', () => {
+    let responseData = null;
+    const res = {
+      json: (data) => { responseData = data; return data; }
+    };
+    auth.getRolesStatus({}, res);
+    expect(responseData).toBeTruthy();
+    expect(responseData.success).toBe(true);
+    expect(responseData.roles.length).toBe(2);
+    expect(responseData.roles.find(r => r.role === 'editor')).toBeTruthy();
+    expect(responseData.roles.find(r => r.role === 'finance')).toBeTruthy();
+  });
+
+  test('changes role pin and supports reset to default', () => {
+    let changeRes = null;
+    const res = {
+      json: (data) => { changeRes = data; return data; },
+      status: () => res
+    };
+
+    // Change editor PIN
+    auth.changeRolePin({ body: { role: 'editor', newPin: '889900' } }, res);
+    expect(changeRes.success).toBe(true);
+    expect(changeRes.isDefault).toBe(false);
+
+    // Reset editor PIN back to default
+    auth.changeRolePin({ body: { role: 'editor', resetToDefault: true } }, res);
+    expect(changeRes.success).toBe(true);
+    expect(changeRes.isDefault).toBe(true);
+  });
 });
 
 describe('SQLite Embedded Database Store', () => {

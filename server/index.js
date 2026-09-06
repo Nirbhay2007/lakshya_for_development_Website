@@ -8,8 +8,8 @@ const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 const sharp = require('sharp');
-const { verifyPin, verifySecurityKey, changeSecurityKey, changePin, changeRolePin, requireAuth, requireRole, enforceNonDefaultCredentials, verifySecurityHeader, hashPIN, readAuth, writeAuth } = require('./auth');
 const AdmZip = require('adm-zip');
+const { verifyPin, verifySecurityKey, changeSecurityKey, changePin, changeRolePin, getRolesStatus, requireAuth, requireRole, enforceNonDefaultCredentials, verifySecurityHeader, hashPIN, readAuth, writeAuth } = require('./auth');
 const nodemailer = require('nodemailer');
 const sanitizeHtml = require('sanitize-html');
 const db = require('./db');
@@ -499,8 +499,9 @@ app.post('/api/auth/reset-pin-confirm', authLimiter, (req, res) => {
   }
 });
 
-// Role PIN update route (Super Admin only)
-app.post('/api/auth/change-role-pin', requireAuth, changeRolePin);
+// Role status & PIN management routes (Super Admin only)
+app.get('/api/auth/roles-status', requireAuth, requireRole('superadmin'), getRolesStatus);
+app.post('/api/auth/change-role-pin', requireAuth, requireRole('superadmin'), changeRolePin);
 
 // 3. MASTER SECURITY KEY RESET REQUEST
 app.post('/api/auth/reset-master-request', authLimiter, async (req, res) => {

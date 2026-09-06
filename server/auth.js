@@ -402,28 +402,68 @@ function enforceNonDefaultCredentials(req, res, next) {
   next();
 }
 
-/** POST /api/auth/change-role-pin — body: { role: 'editor' | 'finance', newPin: '...' } */
+/** GET /api/auth/roles-status */
+function getRolesStatus(req, res) {
+  const auth = readAuth();
+  const roles = [
+    {
+      role: 'editor',
+      title: 'Content Editor',
+      badge: 'Editor',
+      description: 'Manages website content, news, gallery, programmes, impact metrics, and reviews volunteer/job submissions.',
+      isDefault: auth.isDefaultEditor ?? true,
+      defaultPin: DEFAULT_EDITOR_PIN,
+      allowedSections: ['Hero Slider', 'Events Ticker', 'About Section', 'Programmes', 'Impact Numbers', 'Gallery', 'Partners', 'Team', 'Contact Page', 'Careers Page', 'Legal Pages', 'Media Library'],
+      restrictedSections: ['Donations Financials', 'Master Security Keys', 'System Backups', 'Global Settings', 'Audit Logs']
+    },
+    {
+      role: 'finance',
+      title: 'Finance & Compliance Officer',
+      badge: 'Finance',
+      description: 'Monitors donations, tracks 80G tax exemptions, exports Form 10BD CSV for Income Tax filing, and downloads official 80G PDF receipts.',
+      isDefault: auth.isDefaultFinance ?? true,
+      defaultPin: DEFAULT_FINANCE_PIN,
+      allowedSections: ['Dashboard Analytics', 'Submissions Inquiries', 'Donations Log & Receipts', 'Form 10BD Export', 'Newsletter Subscribers'],
+      restrictedSections: ['CMS Page Editors', 'Hero Slider', 'About Section', 'Master Security Keys', 'System Backups', 'Media Library']
+    }
+  ];
+
+  return res.json({ success: true, roles });
+}
+
+/** POST /api/auth/change-role-pin — body: { role: 'editor' | 'finance', newPin?: '...', resetToDefault?: boolean } */
 function changeRolePin(req, res) {
-  const { role, newPin } = req.body;
+  const { role, resetToDefault } = req.body;
+  let { newPin } = req.body;
+
   if (!role || !['editor', 'finance'].includes(role)) {
     return res.status(400).json({ success: false, message: 'Role must be editor or finance.' });
   }
-  if (!newPin || typeof newPin !== 'string' || newPin.length !== 6) {
-    return res.status(400).json({ success: false, message: 'PIN must be a 6-digit string.' });
+
+  if (resetToDefault) {
+    newPin = role === 'editor' ? DEFAULT_EDITOR_PIN : DEFAULT_FINANCE_PIN;
+  } else if (!newPin || typeof newPin !== 'string' || newPin.length !== 6 || !/^\d{6}$/.test(newPin)) {
+    return res.status(400).json({ success: false, message: 'PIN must be a 6-digit numeric string.' });
   }
 
   const auth = readAuth();
   const newHashed = createSaltedHash(newPin);
+  const isDefault = (newPin === (role === 'editor' ? DEFAULT_EDITOR_PIN : DEFAULT_FINANCE_PIN));
+
   if (role === 'editor') {
     auth.editorPinHash = newHashed;
-    auth.isDefaultEditor = false;
+    auth.isDefaultEditor = isDefault;
   } else {
     auth.financePinHash = newHashed;
-    auth.isDefaultFinance = false;
+    auth.isDefaultFinance = isDefault;
   }
   writeAuth(auth);
 
-  return res.json({ success: true, message: `${role.toUpperCase()} PIN updated successfully.` });
+  return res.json({ 
+    success: true, 
+    message: `${role === 'editor' ? 'Content Editor' : 'Finance Officer'} PIN ${resetToDefault ? `reset to default (${newPin})` : 'updated successfully'}.`,
+    isDefault
+  });
 }
 
 module.exports = {
@@ -432,6 +472,7 @@ module.exports = {
   changeSecurityKey,
   changePin,
   changeRolePin,
+  getRolesStatus,
   requireAuth,
   requireRole,
   enforceNonDefaultCredentials,
