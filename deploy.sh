@@ -4,6 +4,10 @@ set -euo pipefail
 
 echo "🚀 Starting deployment to VPS..."
 
+# 0. Pre-deployment Test Gate (Never deploy broken code)
+echo "🧪 Running automated test suite..."
+npm test
+
 # 1. Build the production bundles locally
 echo "📦 Building production assets..."
 npm run build
@@ -78,6 +82,14 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=accept-new "$VM_USER@$VM_IP" << 'EOF'
   
   echo "📊 Process list:"
   pm2 list
+
+  echo "🏥 Checking application health..."
+  sleep 3
+  if curl -fsS http://localhost:3000/api/health > /dev/null 2>&1; then
+    echo "✅ Remote health check passed (HTTP 200 OK)."
+  else
+    echo "⚠️ Warning: Health check endpoint did not respond immediately. Please verify PM2 logs with 'pm2 logs lakshya-app'."
+  fi
 EOF
 
 echo "🎉 Deployment complete! Visit http://$VM_IP:3000 to verify."

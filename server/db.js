@@ -13,6 +13,7 @@ let db = new Database(DB_PATH);
 // Enable WAL mode for high concurrency
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
+db.pragma('busy_timeout = 5000');
 
 // --- Create Tables ---
 db.exec(`
@@ -38,6 +39,10 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_donations_date ON donations(date);
   CREATE INDEX IF NOT EXISTS idx_donations_ref ON donations(transactionRef);
   CREATE INDEX IF NOT EXISTS idx_donations_claim80g ON donations(claim80g);
+  CREATE INDEX IF NOT EXISTS idx_donations_pan ON donations(panNumber);
+  CREATE INDEX IF NOT EXISTS idx_donations_email ON donations(email);
+  CREATE INDEX IF NOT EXISTS idx_donations_phone ON donations(phone);
+  CREATE INDEX IF NOT EXISTS idx_donations_receipt ON donations(receiptNumber);
 
   CREATE TABLE IF NOT EXISTS submissions (
     id TEXT PRIMARY KEY,
@@ -629,8 +634,20 @@ function recordBroadcastOpen(broadcastId, email) {
   }
 }
 
+function closeDatabase() {
+  try {
+    if (db && db.open) {
+      db.pragma('wal_checkpoint(TRUNCATE)');
+      db.close();
+    }
+  } catch (e) {
+    console.error('Error closing SQLite database:', e);
+  }
+}
+
 module.exports = {
   get db() { return db; },
+  closeDatabase,
   backupDatabase,
   restoreDatabaseFromFile,
   getDonations,

@@ -2646,6 +2646,28 @@ if (fs.existsSync(PUBLIC_DIST)) {
   });
 }
 
+// Centralized Express Error Handling Middleware
+app.use((err, req, res, next) => {
+  console.error('Express Request Error:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  const statusCode = err.status || err.statusCode || (err.name === 'ValidationError' ? 400 : 500);
+  return res.status(statusCode).json({
+    success: false,
+    message: err.message || 'An unexpected internal server error occurred.'
+  });
+});
+
+// Process-level Crash Protections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[UNHANDLED REJECTION]', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT EXCEPTION]', err);
+});
+
 // --- Start ---
 const server = app.listen(PORT, () => {
   console.log(`\n  🌿 Lakshya Server running on http://localhost:${PORT}`);
@@ -2657,6 +2679,15 @@ const server = app.listen(PORT, () => {
 // Graceful Shutdown
 function handleShutdown(signal) {
   console.log(`\n⚙️ Received ${signal}. Shutting down gracefully...`);
+  try {
+    if (db && typeof db.closeDatabase === 'function') {
+      db.closeDatabase();
+      console.log('📦 Database connection closed and WAL checkpointed.');
+    }
+  } catch (dbErr) {
+    console.error('Error closing database:', dbErr);
+  }
+
   server.close(() => {
     console.log('💤 Server process closed.');
     process.exit(0);
