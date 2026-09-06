@@ -72,6 +72,8 @@ function AnimatedRoutes() {
       document.title = `Donate & Support | ${siteName}`;
     } else if (path === '/career') {
       document.title = `Careers | ${siteName}`;
+    } else if (path === '/tax-receipts' || path === '/receipt-lookup') {
+      document.title = `80G Tax Receipts & Statement | ${siteName}`;
     } else if (path === '/privacy-policy') {
       document.title = `Privacy Policy | ${siteName}`;
     } else if (path === '/terms-conditions') {
