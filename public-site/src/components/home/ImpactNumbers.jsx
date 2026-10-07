@@ -16,7 +16,7 @@ const ImpactNumbers = () => {
   const shouldReduceMotion = useReducedMotion();
   const impactData = useCMSData('impact') || { settings: {}, stats: [] };
   const rawStats = impactData.stats || [];
-  const stats = Array.isArray(rawStats) ? rawStats.filter((s) => s.active) : [];
+  const stats = Array.isArray(rawStats) ? rawStats.filter((s) => s.active !== false) : [];
   const settings = impactData.settings || {};
 
   const containerVariants = {

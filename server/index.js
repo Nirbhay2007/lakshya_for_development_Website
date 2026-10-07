@@ -266,9 +266,12 @@ const defaultOrigins = [
   'http://127.0.0.1:5174',
   'http://127.0.0.1:3000'
 ];
-const envOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
-  : [];
+const envOrigins = [
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean) : []),
+  ...(process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`, `http://${process.env.VERCEL_URL}`] : []),
+  ...(process.env.PUBLIC_SITE_URL ? [process.env.PUBLIC_SITE_URL] : []),
+  ...(process.env.ADMIN_URL ? [process.env.ADMIN_URL] : [])
+];
 const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 
 app.use(cors({
@@ -668,6 +671,10 @@ function stripSecrets(section, data, req) {
 
 // Read CMS section data (public — no auth needed, secrets stripped for non-admin)
 app.get('/api/cms/:section', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
   const { section } = req.params;
 
   if (!VALID_SECTIONS.includes(section)) {
@@ -993,6 +1000,10 @@ app.get('/api/backups/download/:id', requireAuth, requireSecurityAuth, (req, res
 
 // Bulk read all CMS sections (public)
 app.get('/api/cms', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
   const isAdmin = isAdminRequest(req);
   if (cmsCache) {
     if (isAdmin) return res.json(cmsCache);
@@ -1211,7 +1222,12 @@ const serveInjectedHtml = (res, distPath, reqPath) => {
       }
     }
 
-    // Inject data into the <head>
+    // Strip secrets for public SSR HTML
+    if (allData.donate) {
+      allData.donate = stripSecrets('donate', allData.donate, null);
+    }
+
+    // Inject data into the <head> before module scripts run
     let blurhashes = {};
     if (fs.existsSync(BLURHASHES_FILE)) {
       try {
@@ -1219,7 +1235,11 @@ const serveInjectedHtml = (res, distPath, reqPath) => {
       } catch (e) {}
     }
     const script = `<script>window.__CMS_DATA__ = ${JSON.stringify(allData)}; window.__BLURHASHES__ = ${JSON.stringify(blurhashes)};</script>`;
-    html = html.replace('</body>', `${script}</body>`);
+    if (html.includes('</head>')) {
+      html = html.replace('</head>', `${script}</head>`);
+    } else {
+      html = html.replace('</body>', `${script}</body>`);
+    }
     
     // Inject SEO tags
     const seoSettings = allData['settings']?.seo || {};
@@ -1372,7 +1392,7 @@ app.post('/api/newsletter/subscribe', publicFormLimiter, (req, res) => {
             const welcomeSubject = fsSettings.newsletterSubject || 'Welcome to Lakshya NGO Newsletter!';
             const welcomeBody = fsSettings.newsletterBody || 'Thank you for subscribing to our newsletter!';
             
-            const host = req.headers.host || '80.225.201.147:3000';
+            const host = req.headers.host || process.env.VERCEL_URL || '80.225.201.147:3000';
             const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
             const unsubscribeUrl = `${protocol}://${host}/api/newsletter/unsubscribe?email=${encodeURIComponent(emailNormalized)}`;
             
@@ -2557,7 +2577,7 @@ app.post('/api/newsletter/broadcast', requireAuth, async (req, res) => {
     let sentCount = 0;
     let failedCount = 0;
 
-    const host = req.headers.host || '80.225.201.147:3000';
+    const host = req.headers.host || process.env.VERCEL_URL || '80.225.201.147:3000';
     const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : 'http');
     const broadcastId = `bc_${Date.now()}`;
 

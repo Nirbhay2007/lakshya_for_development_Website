@@ -75,4 +75,28 @@ describe('Server API Security & Data Protection', () => {
     // Unique PIN must not collide
     expect(checkPinCollision('741852', 'editorPinHash', mockAuth)).toBeNull();
   });
+
+  it('ensures SSR HTML injection places CMS data in head and strips secrets', () => {
+    const rawHtml = '<html><head><title>Lakshya</title></head><body><div id="root"></div></body></html>';
+    const allData = {
+      donate: {
+        gateways: {
+          razorpay: {
+            keyId: 'rzp_test_123',
+            keySecret: 'secret_key_to_never_expose'
+          }
+        }
+      }
+    };
+    if (allData.donate) {
+      allData.donate = stripSecrets('donate', allData.donate, false);
+    }
+    const script = `<script>window.__CMS_DATA__ = ${JSON.stringify(allData)};</script>`;
+    const injectedHtml = rawHtml.replace('</head>', `${script}</head>`);
+    
+    expect(injectedHtml).toContain('<script>window.__CMS_DATA__');
+    expect(injectedHtml).toContain('rzp_test_123');
+    expect(injectedHtml).not.toContain('secret_key_to_never_expose');
+    expect(injectedHtml.indexOf('<script>window.__CMS_DATA__')).toBeLessThan(injectedHtml.indexOf('</head>'));
+  });
 });

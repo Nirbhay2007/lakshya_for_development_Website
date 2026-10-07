@@ -161,7 +161,51 @@ export function normalizeData(section, rawData) {
     if (!normalized.termsConditions) {
       normalized.termsConditions = { title: 'Terms & Conditions', lastUpdated: '', content: '' };
     }
+    if (!normalized.refundPolicy) {
+      normalized.refundPolicy = { title: 'Refund & Return Policy', lastUpdated: '', content: '' };
+    }
+    if (!normalized.cancellationPolicy) {
+      normalized.cancellationPolicy = { title: 'Cancellation Policy', lastUpdated: '', content: '' };
+    }
     return normalized;
+  }
+  if (section === 'team') {
+    let list = rawData;
+    if (rawData && !Array.isArray(rawData)) {
+      if (Array.isArray(rawData.members)) list = rawData.members;
+      else if (Array.isArray(rawData.team)) list = rawData.team;
+      else list = [];
+    }
+    if (!Array.isArray(list)) list = [];
+    return list.map((m) => ({ ...m, active: m.active !== false }));
+  }
+  if (section === 'programmes') {
+    let list = rawData;
+    if (rawData && !Array.isArray(rawData)) {
+      if (Array.isArray(rawData.items)) list = rawData.items;
+      else if (Array.isArray(rawData.programmes)) list = rawData.programmes;
+      else list = [];
+    }
+    if (!Array.isArray(list)) list = [];
+    return list.map((p) => ({ ...p, active: p.active !== false }));
+  }
+  if (section === 'about') {
+    const normalized = { ...rawData };
+    if (!normalized.main) normalized.main = {};
+    if (!normalized.missionVision) normalized.missionVision = {};
+    if (!Array.isArray(normalized.timeline)) normalized.timeline = [];
+    if (!Array.isArray(normalized.values)) normalized.values = [];
+    return normalized;
+  }
+  if (section === 'hero') {
+    let list = rawData;
+    if (rawData && !Array.isArray(rawData)) {
+      if (Array.isArray(rawData.slides)) list = rawData.slides;
+      else if (Array.isArray(rawData.items)) list = rawData.items;
+      else list = [];
+    }
+    if (!Array.isArray(list)) list = [];
+    return list.map((s) => ({ ...s, active: s.active !== false }));
   }
   if (section === 'donate') {
     const normalized = { ...rawData };

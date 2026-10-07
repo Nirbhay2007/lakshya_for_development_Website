@@ -13,11 +13,11 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.SERVER_URL || 'http://localhost:3000',
         changeOrigin: true
       },
       '/admin': {
-        target: 'http://localhost:5174',
+        target: process.env.ADMIN_URL || 'http://localhost:5174',
         changeOrigin: true,
         ws: true
       }

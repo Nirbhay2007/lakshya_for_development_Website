@@ -16,11 +16,11 @@ const Gallery = () => {
   const galleryData = useCMSData('gallery') || { images: [], videos: [] };
   
   const galleryPhotos = useMemo(() => {
-    return Array.isArray(galleryData.images) ? galleryData.images.filter((img) => img.active) : [];
+    return Array.isArray(galleryData.images) ? galleryData.images.filter((img) => img.active !== false) : [];
   }, [galleryData.images]);
 
   const videosList = useMemo(() => {
-    return Array.isArray(galleryData.videos) ? galleryData.videos.filter((vid) => vid.active) : [];
+    return Array.isArray(galleryData.videos) ? galleryData.videos.filter((vid) => vid.active !== false) : [];
   }, [galleryData.videos]);
 
   const settingsData = useCMSData('settings') || {};
@@ -37,7 +37,7 @@ const Gallery = () => {
   const filteredPhotos = useMemo(() => {
     return filter === 'All'
       ? galleryPhotos
-      : galleryPhotos.filter(item => item.category === filter);
+      : galleryPhotos.filter(item => (item.category || '').trim().toLowerCase() === filter.trim().toLowerCase());
   }, [filter, galleryPhotos]);
 
   // Lightbox handlers

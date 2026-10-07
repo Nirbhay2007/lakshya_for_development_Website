@@ -111,9 +111,9 @@ export async function saveSection(sectionKey, data) {
   // 1. Update localStorage cache immediately (instant UI update)
   localStorage.setItem(`lakshya_cms_${sectionKey}`, JSON.stringify(data));
 
-  // 2. Dispatch custom event for same-window updates
-  const event = new CustomEvent(`lakshya_cms_${sectionKey}_update`);
-  window.dispatchEvent(event);
+  // 2. Dispatch custom events for same-window updates
+  window.dispatchEvent(new CustomEvent(`lakshya_cms_${sectionKey}_update`));
+  window.dispatchEvent(new CustomEvent('lakshya_cms_update'));
 
   const headers = {
     'Content-Type': 'application/json'
@@ -158,6 +158,8 @@ export async function saveSection(sectionKey, data) {
 // Reset section back to shared fallback file (discard drafts)
 export async function discardSectionDraft(sectionKey) {
   localStorage.removeItem(`lakshya_cms_${sectionKey}`);
+  window.dispatchEvent(new CustomEvent(`lakshya_cms_${sectionKey}_update`));
+  window.dispatchEvent(new CustomEvent('lakshya_cms_update'));
 
   // Also restore the original file on server
   const fallbackData = fallbacks[sectionKey];

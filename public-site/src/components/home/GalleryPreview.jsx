@@ -9,7 +9,7 @@ import SafeImage from '../ui/SafeImage';
 const GalleryPreview = () => {
   const shouldReduceMotion = useReducedMotion();
   const galleryData = useCMSData('gallery') || { images: [], videos: [] };
-  const activeImages = Array.isArray(galleryData.images) ? galleryData.images.filter((img) => img.active) : [];
+  const activeImages = Array.isArray(galleryData.images) ? galleryData.images.filter((img) => img.active !== false) : [];
 
   const featured = activeImages.find((img) => img.featured) || activeImages[0];
   const normalItems = activeImages.filter((img) => img.id !== featured?.id).slice(0, 4);

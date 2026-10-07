@@ -10,7 +10,7 @@ const HeroSlider = () => {
   
   const slides = useMemo(() => {
     const list = rawSlides || [];
-    return Array.isArray(list) ? list.filter((s) => s.status !== 'Hidden') : [];
+    return Array.isArray(list) ? list.filter((s) => s.status !== 'Hidden' && s.active !== false) : [];
   }, [rawSlides]);
 
   useEffect(() => {

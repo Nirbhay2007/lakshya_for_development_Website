@@ -30,7 +30,7 @@ const About = () => {
   const values = aboutData.values || [];
 
   const rawTeam = useCMSData('team') || [];
-  const team = Array.isArray(rawTeam) ? rawTeam.filter((m) => m.active) : [];
+  const team = Array.isArray(rawTeam) ? rawTeam.filter((m) => m.active !== false) : [];
 
   // Scroll scroll-progress hooks
   const { scrollYProgress } = useScroll({

@@ -94,6 +94,38 @@ export default function AboutEditor() {
     triggerChange({ ...data, values: [...data.values, newValue] });
   };
 
+  // Timeline changers
+  const handleReorderTimeline = (newTimeline) => {
+    triggerChange({
+      ...data,
+      timeline: newTimeline
+    });
+  };
+
+  const handleTimelineChange = (index, field, value) => {
+    const updated = (data.timeline || []).map((t, i) => {
+      if (i === index) {
+        return { ...t, [field]: value };
+      }
+      return t;
+    });
+    triggerChange({ ...data, timeline: updated });
+  };
+
+  const deleteTimelineItem = (index) => {
+    const filtered = (data.timeline || []).filter((_, i) => i !== index);
+    triggerChange({ ...data, timeline: filtered });
+  };
+
+  const addTimelineItem = () => {
+    const newItem = {
+      year: new Date().getFullYear().toString(),
+      title: 'New Milestone',
+      description: 'Describe this key milestone in Lakshya\'s organizational journey.'
+    };
+    triggerChange({ ...data, timeline: [...(data.timeline || []), newItem] });
+  };
+
   if (!data) return <div className="text-center py-12 text-admin-muted text-sm">Loading about details...</div>;
 
   return (
@@ -114,7 +146,8 @@ export default function AboutEditor() {
         {[
           { id: 'main', name: 'Main Content' },
           { id: 'missionVision', name: 'Mission & Vision' },
-          { id: 'values', name: 'Core Values & Stats' }
+          { id: 'values', name: 'Core Values & Stats' },
+          { id: 'timeline', name: 'Journey Timeline' }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -311,6 +344,69 @@ export default function AboutEditor() {
                     label="Description details"
                     value={valueItem.description}
                     onChange={(val) => handleValueChange(index, 'description', val)}
+                  />
+                </div>
+              )}
+            />
+          </div>
+        )}
+
+        {activeTab === 'timeline' && (
+          <div className="space-y-4 max-w-3xl">
+            <div className="flex items-center justify-between">
+              <div className="text-xs uppercase font-bold text-admin-muted tracking-wider">
+                Reorder and Edit Lakshya Journey Timeline Milestones
+              </div>
+              <button
+                onClick={addTimelineItem}
+                className="flex items-center gap-1 admin-btn-secondary py-1 text-[11px]"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Milestone</span>
+              </button>
+            </div>
+
+            <CMSDragList
+              items={data.timeline || []}
+              onReorder={handleReorderTimeline}
+              keyExtractor={(item, index) => index}
+              renderItem={(timelineItem, index) => (
+                <div className="space-y-3 w-full">
+                  <div className="flex gap-4">
+                    <div className="w-32">
+                      <CMSInput
+                        label="Milestone Year"
+                        value={timelineItem.year}
+                        onChange={(val) => handleTimelineChange(index, 'year', val)}
+                        maxLength={10}
+                        placeholder="2006"
+                      />
+                    </div>
+
+                    <CMSInput
+                      label="Milestone Headline"
+                      value={timelineItem.title}
+                      onChange={(val) => handleTimelineChange(index, 'title', val)}
+                      maxLength={60}
+                      placeholder="The Spark"
+                      className="flex-1"
+                    />
+
+                    <div className="flex items-end pb-1 shrink-0">
+                      <button
+                        onClick={() => deleteTimelineItem(index)}
+                        className="p-2 rounded-xl bg-admin-danger/10 border border-admin-danger/25 text-admin-danger hover:bg-admin-danger hover:text-white transition-colors"
+                        title="Delete timeline milestone"
+                      >
+                        <Trash2 className="w-4 h-4 shrink-0" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <CMSRichText
+                    label="Milestone Description"
+                    value={timelineItem.description}
+                    onChange={(val) => handleTimelineChange(index, 'description', val)}
                   />
                 </div>
               )}

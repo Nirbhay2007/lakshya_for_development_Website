@@ -1,5 +1,47 @@
 [
   {
+    "id": "svrcgxuww",
+    "timestamp": 1788704976247,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in with SUPERADMIN role"
+  },
+  {
+    "id": "ikrm5bmjb",
+    "timestamp": 1788704768782,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in with SUPERADMIN role"
+  },
+  {
+    "id": "x7pjks9bs",
+    "timestamp": 1788678535272,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in with FINANCE role"
+  },
+  {
+    "id": "hlvkgxrx6",
+    "timestamp": 1788678408674,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in with SUPERADMIN role"
+  },
+  {
+    "id": "oq5i0w9yr",
+    "timestamp": 1788678399848,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in with EDITOR role"
+  },
+  {
+    "id": "4yi6487pm",
+    "timestamp": 1788678051487,
+    "action": "Security",
+    "section": "Auth",
+    "description": "Authorized access: user signed in with SUPERADMIN role"
+  },
+  {
     "id": "oc8gokn55",
     "timestamp": 1788671506532,
     "action": "Security",

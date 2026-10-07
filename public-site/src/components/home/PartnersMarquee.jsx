@@ -38,7 +38,7 @@ const PartnersMarquee = () => {
 
   const hasActivePartners = useMemo(() => {
     return rows.some(row => 
-      Array.isArray(row.partners) && row.partners.some(p => p.active)
+      Array.isArray(row.partners) && row.partners.some(p => p.active !== false && (p.logo || p.image))
     );
   }, [rows]);
 
@@ -67,7 +67,9 @@ const PartnersMarquee = () => {
         <div className="space-y-12 mt-8">
           {rows.map((row, rIdx) => {
             const activeItems = Array.isArray(row.partners)
-              ? row.partners.filter(p => p.active).map(p => p.logo)
+              ? row.partners
+                  .filter(p => p.active !== false && (p.logo || p.image))
+                  .map(p => p.logo || p.image)
               : [];
             
             if (activeItems.length === 0) return null;

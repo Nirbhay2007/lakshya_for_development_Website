@@ -14,7 +14,7 @@ const Career = () => {
   const todayStr = new Date().toISOString().split('T')[0];
   const jobs = Array.isArray(careersData.jobs)
     ? careersData.jobs.filter((j) => {
-        if (!j.active) return false;
+        if (j.active === false) return false;
         if (j.publishDate && j.publishDate > todayStr) return false;
         return true;
       })

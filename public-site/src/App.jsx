@@ -51,7 +51,7 @@ function AnimatedRoutes() {
   const isRouteActive = (path) => {
     if (navigation.length === 0) return true;
     const item = navigation.find(n => n.path === path);
-    return item ? item.active === true : true;
+    return item ? item.active !== false : true;
   };
 
   React.useEffect(() => {

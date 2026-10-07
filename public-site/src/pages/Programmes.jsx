@@ -12,7 +12,7 @@ const Programmes = () => {
   
   const programmesDetail = useMemo(() => {
     const list = rawProgrammes || [];
-    return Array.isArray(list) ? list.filter((p) => p.active) : [];
+    return Array.isArray(list) ? list.filter((p) => p.active !== false) : [];
   }, [rawProgrammes]);
 
   const [activeTab, setActiveTab] = useState('');

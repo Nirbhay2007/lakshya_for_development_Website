@@ -7,7 +7,7 @@ const EventsTicker = () => {
   const todayStr = new Date().toISOString().split('T')[0];
   const events = rawEvents
     .filter(item => {
-      if (!item.active) return false;
+      if (item.active === false) return false;
       if (item.date && item.date > todayStr) return false;
       return true;
     })

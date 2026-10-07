@@ -30,7 +30,7 @@ const Contact = () => {
   const headOffice = contactData.headOffice || {};
   
   const offices = useMemo(() => {
-    return Array.isArray(contactData.regionalOffices) ? contactData.regionalOffices.filter((o) => o.active) : [];
+    return Array.isArray(contactData.regionalOffices) ? contactData.regionalOffices.filter((o) => o.active !== false) : [];
   }, [contactData.regionalOffices]);
 
   const formSettings = contactData.formSettings || {};

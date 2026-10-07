@@ -185,7 +185,7 @@ const Footer = () => {
         <div className="space-y-4">
           <h3 className="font-display font-semibold text-lg text-amber-400">Quick Links</h3>
           <ul className="space-y-2">
-            {navItems.filter(item => item.active).map((item) => (
+            {navItems.filter(item => item.active !== false).map((item) => (
               <li key={item.id}>
                 <Link to={item.path} className="text-cream/70 text-sm hover:text-forest-400 transition-colors">
                   {item.name}

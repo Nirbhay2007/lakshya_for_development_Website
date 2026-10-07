@@ -18,7 +18,7 @@ const Navbar = () => {
   
   const navItems = useMemo(() => {
     const rawNavItems = settingsData?.navigation || [];
-    return Array.isArray(rawNavItems) ? rawNavItems.filter((item) => item.active) : [];
+    return Array.isArray(rawNavItems) ? rawNavItems.filter((item) => item.active !== false) : [];
   }, [settingsData?.navigation]);
 
   useEffect(() => {

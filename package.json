@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "public-site",
-    "admin"
+    "admin",
+    "server"
   ],
   "scripts": {
     "dev:site": "npm run dev --workspace=public-site",

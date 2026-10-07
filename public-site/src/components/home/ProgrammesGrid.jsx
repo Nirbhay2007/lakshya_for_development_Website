@@ -7,7 +7,7 @@ import { useCMSData } from '../../hooks/useCMSData';
 const ProgrammesGrid = () => {
   const shouldReduceMotion = useReducedMotion();
   const rawProgrammes = useCMSData('programmes') || [];
-  const programmes = Array.isArray(rawProgrammes) ? rawProgrammes.filter((p) => p.active) : [];
+  const programmes = Array.isArray(rawProgrammes) ? rawProgrammes.filter((p) => p.active !== false) : [];
 
   const containerVariants = {
     hidden: {},
